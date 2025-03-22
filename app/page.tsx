@@ -62,7 +62,7 @@ export default function Home() {
 
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Recent Transactions ({transactions.length})</h2>
+                <h2 className="text-xl font-semibold">Recent Transactions <span className="text-gray-500">({transactions.length})</span></h2>
                 <div className="flex items-center">
                   <button
                     onClick={refreshData}
