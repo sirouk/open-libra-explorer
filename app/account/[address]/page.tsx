@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getAccountResources } from '../../services/libraService';
+import { useAccountData } from '../../context/AccountDataContext';
 
 // Simple loading component for the redirect page
 function LoadingSpinner() {
     return (
-        <div className="flex justify-center items-center h-screen">
+        <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-libra-coral"></div>
         </div>
     );
@@ -15,54 +15,30 @@ function LoadingSpinner() {
 
 export default function AccountPage({ params }: { params: { address: string } }) {
     const router = useRouter();
-    const [isLoading, setIsLoading] = useState(true);
+    const { isLoading, error, resourceTypes } = useAccountData();
 
-    // Helper function to extract simple resource type
-    const getSimpleResourceType = (fullType: string): string => {
-        const parts = fullType.split('::');
-        return parts.length >= 3 ? parts[2].split('<')[0] : fullType;
-    };
-
+    // Redirect to the first resource type (lowercase) once data is loaded
     useEffect(() => {
-        async function loadAndRedirect() {
-            try {
-                // Fetch the account data to get available resources
-                const accountData = await getAccountResources(params.address);
-
-                if (accountData && accountData.resources && accountData.resources.length > 0) {
-                    // Extract and sort resource types
-                    const resourceTypes = [...new Set(
-                        accountData.resources.map((r: any) => getSimpleResourceType(r.type))
-                    )].sort();
-
-                    // Redirect to the first resource type
-                    if (resourceTypes.length > 0) {
-                        router.replace(`/account/${params.address}/${resourceTypes[0]}`);
-                        return;
-                    }
-                }
-
-                // If no resources or error, we'll still stop loading
-                setIsLoading(false);
-            } catch (error) {
-                console.error('Error fetching account data for redirect:', error);
-                setIsLoading(false);
-            }
+        if (!isLoading && !error && resourceTypes.length > 0) {
+            // Navigate to the first resource type, ensuring lowercase
+            router.replace(`/account/${params.address}/${resourceTypes[0].toLowerCase()}`);
         }
+    }, [isLoading, error, resourceTypes, params.address, router]);
 
-        loadAndRedirect();
-    }, [params.address, router]);
-
-    // Show loading spinner during the redirect
-    if (isLoading) {
+    // Show loading spinner while loading or redirecting
+    if (isLoading || resourceTypes.length > 0) {
         return <LoadingSpinner />;
     }
 
     // In case we can't redirect (no resources), show a message
     return (
-        <div className="flex flex-col items-center justify-center h-screen">
-            <h2 className="text-xl mb-4">No resources found for this account</h2>
-            <p className="text-gray-600">Account address: {params.address}</p>
+        <div className="mb-6">
+            <h2 className="text-2xl font-semibold">Account Details</h2>
+            <p className="text-gray-600 dark:text-gray-400 font-mono break-all">{params.address}</p>
+            <div className="mt-4 text-center py-6 bg-white dark:bg-gray-800 rounded-lg shadow">
+                <h3 className="text-xl mb-2">No resources found for this account</h3>
+                <p className="text-gray-600">This account may not have been initialized yet</p>
+            </div>
         </div>
     );
 } 
