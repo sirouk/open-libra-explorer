@@ -212,9 +212,11 @@ export default function Home() {
                             </Link>
                           </div>
                           <div className="text-gray-500 text-xs">
-                            {tx.formattedDate || (() => {
-                              return new Date(tx.timestamp * 1000).toLocaleString();
-                            })()}
+                            <Link href={`/tx/${tx.id}`} className="hover:underline">
+                              {tx.formattedDate || (() => {
+                                return new Date(tx.timestamp * 1000).toLocaleString();
+                              })()}
+                            </Link>
                           </div>
                         </div>
 
@@ -262,7 +264,9 @@ export default function Home() {
                             )}
                           </div>
                           <div className="text-xs font-mono text-gray-700 dark:text-gray-300">
-                            Block: {Number(tx.blockHeight).toLocaleString()}
+                            <Link href={`/tx/${tx.id}`} className="hover:underline">
+                              Block: {Number(tx.blockHeight).toLocaleString()}
+                            </Link>
                           </div>
                         </div>
                       </div>
