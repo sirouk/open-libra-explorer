@@ -220,9 +220,6 @@ export default function Home() {
                                 {tx.type ? tx.type.replace('_transaction', '') : 'Unknown'}
                               </span>
                             </Link>
-                            <Link href={`/tx/${tx.id}`} className="hover:underline text-sm font-mono text-gray-700 dark:text-gray-300">
-                              {tx.version && `#${Number(tx.version).toLocaleString()}`}
-                            </Link>
                           </div>
                           <div className="text-gray-500 text-xs">
                             {tx.formattedDate || (() => {
