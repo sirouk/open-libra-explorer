@@ -143,12 +143,12 @@ export default function Home() {
                             </>
                           ) : (
                             <>
-                              <span className="text-libra-accent font-mono px-2 py-1 inline-block">
+                              <Link href={`/tx/${tx.id}`} className="text-libra-accent font-mono px-2 py-1 inline-block hover:underline">
                                 {tx.id.startsWith('0x') ?
                                   tx.id.substring(2, 6) + '...' + tx.id.substring(tx.id.length - 4) :
                                   tx.id.substring(0, 4) + '...' + tx.id.substring(tx.id.length - 4)
                                 }
-                              </span>
+                              </Link>
                               <button
                                 onClick={(e) => {
                                   try {
@@ -255,12 +255,12 @@ export default function Home() {
                                 </button>
                               </div>
                             ) : (
-                              <span className="text-libra-accent font-mono text-sm">
+                              <Link href={`/tx/${tx.id}`} className="text-libra-accent font-mono text-sm hover:underline">
                                 {tx.id.startsWith('0x') ?
                                   tx.id.substring(2, 6) + '...' + tx.id.substring(tx.id.length - 4) :
                                   tx.id.substring(0, 4) + '...' + tx.id.substring(tx.id.length - 4)
                                 }
-                              </span>
+                              </Link>
                             )}
                           </div>
                           <div className="text-xs font-mono text-gray-700 dark:text-gray-300">
