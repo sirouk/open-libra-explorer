@@ -1,50 +1,33 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { getBlockHeight, getEpoch, getLatestTransactions } from './services/libraService';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import { useBlockchainData } from './hooks/useBlockchainData';
+import { AUTO_REFRESH_INTERVAL } from '../config';
 
 export default function Home() {
-  const [blockHeight, setBlockHeight] = useState<number | null>(null);
-  const [latestTransactions, setLatestTransactions] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [epoch, setEpoch] = useState<number | null>(null);
+  // Using our custom hook with 10-second refresh interval
+  const {
+    blockHeight,
+    epoch,
+    transactions: latestTransactions,
+    isLoading,
+    error,
+    lastUpdated,
+    refreshData
+  } = useBlockchainData(10000);
+
+  // Track if manual refresh is in progress
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchBlockchainData = async () => {
-    try {
-      setRefreshing(true);
-
-      // Fetch data from the Open Libra blockchain
-      const [height, currentEpoch, transactions] = await Promise.all([
-        getBlockHeight(),
-        getEpoch(),
-        getLatestTransactions(10)
-      ]);
-
-      setBlockHeight(height);
-      setEpoch(currentEpoch);
-      setLatestTransactions(transactions);
-      setIsLoading(false);
-      setError(null);
-    } catch (err) {
-      console.error('Error fetching blockchain data:', err);
-      setError('Failed to fetch blockchain data. Please try again later.');
-      setIsLoading(false);
-    } finally {
-      setRefreshing(false);
-    }
+  // Handle manual refresh
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refreshData();
+    setRefreshing(false);
   };
-
-  useEffect(() => {
-    fetchBlockchainData();
-    const interval = setInterval(fetchBlockchainData, 30000); // Update every 30 seconds
-
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -54,8 +37,8 @@ export default function Home() {
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-semibold">Open Libra Explorer</h2>
           <button
-            onClick={fetchBlockchainData}
-            disabled={refreshing}
+            onClick={handleRefresh}
+            disabled={refreshing || isLoading}
             className="flex items-center px-4 py-2 bg-libra-coral hover:bg-libra-dark text-white rounded transition-colors disabled:opacity-50"
           >
             {refreshing ? (
@@ -72,7 +55,7 @@ export default function Home() {
           </button>
         </div>
 
-        {isLoading ? (
+        {isLoading && !latestTransactions.length ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-libra-coral"></div>
           </div>
@@ -81,7 +64,7 @@ export default function Home() {
             <p className="font-medium">Error</p>
             <p>{error}</p>
             <button
-              onClick={fetchBlockchainData}
+              onClick={handleRefresh}
               className="mt-2 px-4 py-1 bg-red-700 text-white rounded text-sm hover:bg-red-800 transition-colors"
             >
               Try Again
@@ -108,9 +91,18 @@ export default function Home() {
               <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                 <h2 className="text-xl font-semibold">Latest Transactions</h2>
                 <span className="text-sm text-gray-500">
-                  Auto-updates every 30 seconds
+                  Auto-updates every {AUTO_REFRESH_INTERVAL / 1000} seconds
                 </span>
               </div>
+              {isLoading && latestTransactions.length > 0 && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 px-4 py-2 text-sm text-blue-700 dark:text-blue-300 border-b border-blue-100 dark:border-blue-800">
+                  <svg className="inline-block animate-spin mr-1 h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Refreshing data...
+                </div>
+              )}
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
                 {latestTransactions.length > 0 ? (
                   latestTransactions.map((tx) => (
@@ -142,6 +134,11 @@ export default function Home() {
                   </div>
                 )}
               </div>
+              {latestTransactions.length > 0 && (
+                <div className="px-6 py-3 bg-gray-50 dark:bg-gray-900 text-xs text-gray-500 border-t border-gray-200 dark:border-gray-700">
+                  Last updated: {lastUpdated.toLocaleTimeString()}
+                </div>
+              )}
             </div>
           </>
         )}

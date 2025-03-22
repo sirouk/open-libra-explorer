@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
-import { LibraClient, Network } from 'open-libra-sdk';
+import { getTransactionByHash } from '../../services/transactionServer';
 
 export default function TransactionDetailsPage({ params }: { params: { hash: string } }) {
     const [transaction, setTransaction] = useState<any>(null);
@@ -15,18 +15,18 @@ export default function TransactionDetailsPage({ params }: { params: { hash: str
             try {
                 setIsLoading(true);
 
-                // Initialize client directly here for simplicity
-                const client = new LibraClient(Network.MAINNET, 'https://rpc.openlibra.space:8080/v1');
+                // Use the server action to fetch transaction data
+                const txData = await getTransactionByHash(params.hash);
 
-                // Fetch transaction by hash
-                const txData = await client.getTransactionByHash({
-                    transactionHash: params.hash as any
-                });
+                if (!txData) {
+                    throw new Error('Transaction not found or error occurred');
+                }
+
                 setTransaction(txData);
                 setIsLoading(false);
             } catch (err) {
                 console.error('Error fetching transaction data:', err);
-                setError('Failed to fetch transaction data');
+                setError('Failed to fetch transaction data. The transaction may not exist or the blockchain node may be experiencing issues.');
                 setIsLoading(false);
             }
         };
