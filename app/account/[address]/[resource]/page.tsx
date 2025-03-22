@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { useAccountData } from '../../../context/AccountDataContext';
 import { LIBRA_DECIMALS } from '../../../../config';
 
@@ -30,7 +30,12 @@ function formatBalance(rawBalance: string | number): string {
         : `${wholePartFormatted}.${trimmedFractional}`;
 }
 
-export default function AccountResourcePage({ params }: { params: { address: string; resource: string } }) {
+export default function AccountResourcePage() {
+    // Use useParams hook to get route parameters
+    const params = useParams();
+    const address = params.address as string;
+    const resource = params.resource as string;
+
     const router = useRouter();
     const {
         accountData,
@@ -38,11 +43,10 @@ export default function AccountResourcePage({ params }: { params: { address: str
         error,
         resourceTypes,
         getActiveResources,
-        resourcesByType
     } = useAccountData();
 
     // Get the canonical lowercase version of the resource param
-    const normalizedResource = params.resource.toLowerCase();
+    const normalizedResource = resource.toLowerCase();
 
     // Find matching resource type (case-insensitive)
     const matchingResourceType = resourceTypes.find(
@@ -57,22 +61,22 @@ export default function AccountResourcePage({ params }: { params: { address: str
     // Redirect if resource doesn't exist or URL case doesn't match
     useEffect(() => {
         if (!isLoading && !error && resourceTypes.length > 0) {
-            if (params.resource !== normalizedResource) {
+            if (resource !== normalizedResource) {
                 // Fix URL case to be lowercase
-                router.replace(`/account/${params.address}/${normalizedResource}`);
+                router.replace(`/account/${address}/${normalizedResource}`);
             } else if (!matchingResourceType) {
                 // Resource doesn't exist, redirect to first available resource
-                router.replace(`/account/${params.address}/${resourceTypes[0].toLowerCase()}`);
+                router.replace(`/account/${address}/${resourceTypes[0].toLowerCase()}`);
             }
         }
     }, [
         isLoading,
         error,
         resourceTypes,
-        params.resource,
+        resource,
         normalizedResource,
         matchingResourceType,
-        params.address,
+        address,
         router
     ]);
 
@@ -98,7 +102,7 @@ export default function AccountResourcePage({ params }: { params: { address: str
         <>
             <div className="mb-6">
                 <h2 className="text-2xl font-semibold">Account Details</h2>
-                <p className="text-gray-600 dark:text-gray-400 font-mono break-all">{params.address}</p>
+                <p className="text-gray-600 dark:text-gray-400 font-mono break-all">{address}</p>
             </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden mb-6">
@@ -134,7 +138,7 @@ export default function AccountResourcePage({ params }: { params: { address: str
                             {resourceTypes.map((type) => (
                                 <Link
                                     key={type}
-                                    href={`/account/${params.address}/${type.toLowerCase()}`}
+                                    href={`/account/${address}/${type.toLowerCase()}`}
                                     className={`px-3 py-1.5 text-sm font-medium rounded-md 
                                         ${type.toLowerCase() === normalizedResource
                                             ? 'bg-libra-coral text-white'
@@ -151,7 +155,7 @@ export default function AccountResourcePage({ params }: { params: { address: str
                 {/* Resource Content */}
                 <div className="p-6 space-y-6">
                     {activeResources.length > 0 ? (
-                        activeResources.map((resource: any, index: number) => (
+                        activeResources.map((resource: { type?: string, data?: Record<string, unknown> }, index: number) => (
                             <div key={index} className="bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800">
                                 <div className="px-4 py-3 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                                     <h3 className="font-medium text-libra-coral break-all text-sm">

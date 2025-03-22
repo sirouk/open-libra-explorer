@@ -21,7 +21,7 @@
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/jest": "^29.5.14",
-    "@types/node": "^20",
+    "@types/node": "^18.19.81",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "browserify-zlib": "^0.2.0",

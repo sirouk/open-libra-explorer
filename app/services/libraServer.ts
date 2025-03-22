@@ -89,6 +89,10 @@ export async function getLatestTransactions(limit: number = DEFAULT_TX_LIMIT): P
         const MAX_CONSECUTIVE_ERRORS = 5;
         let blockSkip = 1;
 
+        // Start from a block that's slightly behind the current height to avoid "not found" errors
+        // Some RPC nodes might not have the very latest blocks synchronized
+        currentBlock = Math.max(1, currentBlock - 5);
+
         while (fetched < limit && currentBlock > 0 && consecutiveErrors < MAX_CONSECUTIVE_ERRORS) {
             try {
                 // Get block data with transactions
@@ -109,18 +113,24 @@ export async function getLatestTransactions(limit: number = DEFAULT_TX_LIMIT): P
                             // For simplicity, we'll classify all transactions as "Transfer" for now
                             const txInfo: Transaction = {
                                 id: tx.hash,
-                                type: 'Unknown', // Default type is now Unknown
+                                type: tx.type || 'Unknown', // Use the transaction type directly
                                 amount: '0', // Default amount
-                                timestamp: parseInt(block.block_timestamp, 10) / 1000000, // Convert microseconds to milliseconds
+                                timestamp: processTimestamp(block.block_timestamp),
                                 blockHeight: currentBlock.toString(), // Add block height
                                 version: tx.version?.toString() || '' // Add version if available
                             };
 
                             if (DEBUG_MODE && fetched < 3) {
+                                console.log(`Server: TX ${fetched} type:`, tx.type);
+                                console.log(`Server: TX ${fetched} raw:`, JSON.stringify(tx).substring(0, 500) + '...');
                                 console.log(`Server: TX ${fetched} raw timestamp: ${block.block_timestamp} (${typeof block.block_timestamp})`);
                                 console.log(`Server: TX ${fetched} processed timestamp: ${txInfo.timestamp} (${typeof txInfo.timestamp})`);
-                                const date = new Date(txInfo.timestamp);
-                                console.log(`Server: TX ${fetched} date string: ${date.toISOString()}`);
+                                const date = new Date(txInfo.timestamp * 1000);
+                                console.log(`Server: TX ${fetched} date string: ${date.toISOString()} (${date.toLocaleString()})`);
+
+                                // Try both direct timestamp and processed timestamp
+                                const rawDate = new Date(parseInt(block.block_timestamp, 10));
+                                console.log(`Server: TX ${fetched} raw date attempt: ${rawDate.toISOString()}`);
                             }
 
                             // In a real implementation, we would parse the events to get the transaction details
@@ -137,7 +147,7 @@ export async function getLatestTransactions(limit: number = DEFAULT_TX_LIMIT): P
                                     const payloadStr = JSON.stringify(tx.payload);
 
                                     // Try to extract function name
-                                    let functionName = 'Unknown';
+                                    let functionName = tx.type;
 
                                     if (tx.payload.function) {
                                         // Get full function path
@@ -200,11 +210,26 @@ export async function getLatestTransactions(limit: number = DEFAULT_TX_LIMIT): P
                 blockSkip = Math.min(blockSkip + 2, 20);
                 consecutiveErrors++;
 
-                // Log error but don't spam console with the same errors
-                if (consecutiveErrors <= 2) {
-                    console.error(`Error fetching block ${currentBlock}:`, blockError);
-                } else if (consecutiveErrors === MAX_CONSECUTIVE_ERRORS) {
-                    console.error(`Too many consecutive errors fetching blocks, stopping search.`);
+                // Only log for debugging if enabled
+                if (DEBUG_MODE) {
+                    if (consecutiveErrors <= 2) {
+                        console.error(`Error fetching block ${currentBlock}:`, blockError);
+                    } else if (consecutiveErrors === MAX_CONSECUTIVE_ERRORS) {
+                        console.error(`Too many consecutive errors fetching blocks, stopping search.`);
+                    }
+                }
+
+                // If we get specific block not found errors, skip more aggressively
+                const error = blockError as any; // Type assertion
+                if (error && typeof error === 'object' && error.message && typeof error.message === 'string' &&
+                    error.message.includes('block_not_found')) {
+                    // Skip in larger increments for block_not_found errors
+                    // This helps when there are large gaps in sequential blocks
+                    blockSkip = Math.min(blockSkip + 5, 50);
+
+                    if (DEBUG_MODE) {
+                        console.log(`Block ${currentBlock} not found, increasing skip to ${blockSkip}`);
+                    }
                 }
             }
 
@@ -314,4 +339,46 @@ export async function createWallet(mnemonic?: string): Promise<any> {
         console.error('Failed to create wallet:', error);
         return null;
     }
-} 
+}
+
+/**
+ * Process blockchain timestamp to get correct JavaScript date
+ * @param rawTimestamp Raw timestamp from blockchain
+ * @returns Processed timestamp in seconds
+ */
+function processTimestamp(rawTimestamp: string | number): number {
+    try {
+        if (typeof rawTimestamp === 'string') {
+            rawTimestamp = parseInt(rawTimestamp, 10);
+        }
+
+        // The blockchain timestamp appears to be microseconds since some epoch
+        // Convert to milliseconds and determine if we need additional processing
+
+        // First, check if it's a reasonable timestamp for recent dates
+        // Current timestamp in microseconds would be ~1.6-1.7 trillion 
+        if (rawTimestamp > 1500000000000000) {
+            // Modern timestamp in microseconds, convert to seconds
+            return rawTimestamp / 1000000;
+        }
+
+        // If timestamp is already in seconds (much smaller number)
+        if (rawTimestamp < 10000000000) {
+            return rawTimestamp;
+        }
+
+        // If timestamp is in milliseconds
+        if (rawTimestamp < 10000000000000) {
+            return rawTimestamp / 1000;
+        }
+
+        // Default fallback - return current time if we can't parse it
+        if (DEBUG_MODE) {
+            console.warn(`Unrecognized timestamp format: ${rawTimestamp}`);
+        }
+        return Date.now() / 1000;
+    } catch (error) {
+        console.error('Error processing timestamp:', error);
+        return Date.now() / 1000;
+    }
+}

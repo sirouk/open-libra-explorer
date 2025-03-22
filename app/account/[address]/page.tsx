@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { useAccountData } from '../../context/AccountDataContext';
 
 // Simple loading component for the redirect page
@@ -13,7 +13,11 @@ function LoadingSpinner() {
     );
 }
 
-export default function AccountPage({ params }: { params: { address: string } }) {
+export default function AccountPage() {
+    // Use useParams hook to get route parameters
+    const params = useParams();
+    const address = params.address as string;
+
     const router = useRouter();
     const { isLoading, error, resourceTypes } = useAccountData();
 
@@ -21,9 +25,9 @@ export default function AccountPage({ params }: { params: { address: string } })
     useEffect(() => {
         if (!isLoading && !error && resourceTypes.length > 0) {
             // Navigate to the first resource type, ensuring lowercase
-            router.replace(`/account/${params.address}/${resourceTypes[0].toLowerCase()}`);
+            router.replace(`/account/${address}/${resourceTypes[0].toLowerCase()}`);
         }
-    }, [isLoading, error, resourceTypes, params.address, router]);
+    }, [isLoading, error, resourceTypes, address, router]);
 
     // Show loading spinner while loading or redirecting
     if (isLoading || resourceTypes.length > 0) {
@@ -34,7 +38,7 @@ export default function AccountPage({ params }: { params: { address: string } })
     return (
         <div className="mb-6">
             <h2 className="text-2xl font-semibold">Account Details</h2>
-            <p className="text-gray-600 dark:text-gray-400 font-mono break-all">{params.address}</p>
+            <p className="text-gray-600 dark:text-gray-400 font-mono break-all">{address}</p>
             <div className="mt-4 text-center py-6 bg-white dark:bg-gray-800 rounded-lg shadow">
                 <h3 className="text-xl mb-2">No resources found for this account</h3>
                 <p className="text-gray-600">This account may not have been initialized yet</p>

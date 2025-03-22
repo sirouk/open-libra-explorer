@@ -61,7 +61,7 @@ export default function Home() {
 
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Latest Transactions</h2>
+                <h2 className="text-xl font-semibold">Recent Transactions</h2>
                 <div className="flex items-center">
                   {isRefreshing && (
                     <div className="flex items-center mr-4 text-sm text-blue-600 dark:text-blue-400">
@@ -89,49 +89,96 @@ export default function Home() {
               </div>
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
                 {/* Table Header */}
-                <div className="px-6 py-3 bg-gray-50 dark:bg-gray-900 text-xs font-medium text-gray-500 uppercase tracking-wider grid grid-cols-5 gap-4">
+                <div className="px-6 py-3 bg-gray-50 dark:bg-gray-900 text-xs font-medium text-gray-500 uppercase tracking-wider grid grid-cols-5 gap-4 text-center">
                   <div>Block Height</div>
                   <div>Version</div>
                   <div>From</div>
-                  <div>Time</div>
                   <div>Function</div>
+                  <div>Time</div>
                 </div>
 
                 {transactions.length > 0 ? (
                   transactions.map((tx) => (
-                    <Link key={tx.id} href={`/tx/${tx.id}`}>
-                      <div className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer">
-                        <div className="grid grid-cols-5 gap-4 items-center">
-                          <div className="text-gray-700 dark:text-gray-300">
+                    <div key={tx.id} className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                      <div className="grid grid-cols-5 gap-4 items-center text-center">
+                        <div className="text-gray-700 dark:text-gray-300">
+                          <Link href={`/tx/${tx.id}`} className="hover:underline">
                             <p className="text-sm font-mono">{Number(tx.blockHeight).toLocaleString()}</p>
-                          </div>
-                          <div className="text-gray-700 dark:text-gray-300">
+                          </Link>
+                        </div>
+                        <div className="text-gray-700 dark:text-gray-300">
+                          <Link href={`/tx/${tx.id}`} className="hover:underline">
                             <p className="text-sm font-mono">{Number(tx.version).toLocaleString()}</p>
-                          </div>
-                          <div>
-                            {tx.sender && (
-                              <span className="text-libra-accent font-mono">
+                          </Link>
+                        </div>
+                        <div className="flex items-center justify-center">
+                          {tx.sender ? (
+                            <>
+                              <Link
+                                href={`/account/${tx.sender}`}
+                                className="text-libra-accent font-mono hover:underline cursor-pointer inline-block px-2 py-1"
+                              >
                                 {tx.sender.startsWith('0x') ?
                                   tx.sender.substring(2, 6) + '...' + tx.sender.substring(tx.sender.length - 4) :
                                   tx.sender.substring(0, 4) + '...' + tx.sender.substring(tx.sender.length - 4)
                                 }
-                              </span>
-                            )}
-                            {!tx.sender && tx.id && (
-                              <span className="text-libra-accent font-mono">
+                              </Link>
+                              <button
+                                onClick={(e) => {
+                                  try {
+                                    // Copy without 0x prefix
+                                    const addressToCopy = tx.sender?.startsWith('0x') ?
+                                      tx.sender.substring(2) : tx.sender || '';
+                                    navigator.clipboard.writeText(addressToCopy);
+                                    const button = e.currentTarget;
+                                    button.classList.add('text-green-500');
+                                    setTimeout(() => button.classList.remove('text-green-500'), 1000);
+                                  } catch (err) {
+                                    console.error('Failed to copy:', err);
+                                  }
+                                }}
+                                className="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
+                                title="Copy address without 0x prefix"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                              </button>
+                            </>
+                          ) : tx.id && (
+                            <>
+                              <span className="text-libra-accent font-mono px-2 py-1 inline-block">
                                 {tx.id.startsWith('0x') ?
                                   tx.id.substring(2, 6) + '...' + tx.id.substring(tx.id.length - 4) :
                                   tx.id.substring(0, 4) + '...' + tx.id.substring(tx.id.length - 4)
                                 }
                               </span>
-                            )}
-                          </div>
-                          <div className="text-gray-500 text-sm">
-                            {tx.formattedDate || (() => {
-                              return new Date(tx.timestamp * 1000).toLocaleString();
-                            })()}
-                          </div>
-                          <div>
+                              <button
+                                onClick={(e) => {
+                                  try {
+                                    // Copy without 0x prefix
+                                    const txIdToCopy = tx.id?.startsWith('0x') ?
+                                      tx.id.substring(2) : tx.id;
+                                    navigator.clipboard.writeText(txIdToCopy);
+                                    const button = e.currentTarget;
+                                    button.classList.add('text-green-500');
+                                    setTimeout(() => button.classList.remove('text-green-500'), 1000);
+                                  } catch (err) {
+                                    console.error('Failed to copy:', err);
+                                  }
+                                }}
+                                className="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
+                                title="Copy transaction ID without 0x prefix"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                              </button>
+                            </>
+                          )}
+                        </div>
+                        <div className="flex justify-center">
+                          <Link href={`/tx/${tx.id}`} className="hover:underline">
                             <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px] inline-block
                               ${tx.type === 'Transfer' ? 'bg-blue-100 text-blue-800' :
                                 tx.type === 'Stake' ? 'bg-green-100 text-green-800' :
@@ -139,12 +186,19 @@ export default function Home() {
                                     tx.type === 'Block Metadata' ? 'bg-gray-100 text-gray-800' :
                                       tx.type === 'State Checkpoint' ? 'bg-purple-100 text-purple-800' :
                                         'bg-indigo-100 text-indigo-800'}`}>
-                              {tx.type}
+                              {tx.type ? tx.type.replace('_transaction', '') : 'Unknown'}
                             </span>
-                          </div>
+                          </Link>
+                        </div>
+                        <div className="text-gray-500 text-sm text-center">
+                          <Link href={`/tx/${tx.id}`} className="hover:underline">
+                            {tx.formattedDate || (() => {
+                              return new Date(tx.timestamp * 1000).toLocaleString();
+                            })()}
+                          </Link>
                         </div>
                       </div>
-                    </Link>
+                    </div>
                   ))
                 ) : (
                   <div className="px-6 py-8 text-center text-gray-500">

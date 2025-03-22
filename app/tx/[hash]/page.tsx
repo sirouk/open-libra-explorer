@@ -1,12 +1,35 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import { getTransactionByHash } from '../../services/transactionServer';
 
-export default function TransactionDetailsPage({ params }: { params: { hash: string } }) {
-    const [transaction, setTransaction] = useState<any>(null);
+// Define interfaces for better type safety
+interface TransactionEvent {
+    type?: string;
+    data?: Record<string, unknown>;
+}
+
+interface Transaction {
+    hash: string;
+    type: string;
+    displayType?: string;
+    success: boolean;
+    timestamp: string | number;
+    sender?: string;
+    gas_used?: string | number;
+    payload?: Record<string, unknown>;
+    events?: TransactionEvent[];
+}
+
+export default function TransactionPage() {
+    // Use useParams hook to get route parameters
+    const params = useParams();
+    const hash = params.hash as string;
+
+    const [transaction, setTransaction] = useState<Transaction | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -16,7 +39,7 @@ export default function TransactionDetailsPage({ params }: { params: { hash: str
                 setIsLoading(true);
 
                 // Use the server action to fetch transaction data
-                const txData = await getTransactionByHash(params.hash);
+                const txData = await getTransactionByHash(hash);
 
                 if (!txData) {
                     throw new Error('Transaction not found or error occurred');
@@ -32,7 +55,7 @@ export default function TransactionDetailsPage({ params }: { params: { hash: str
         };
 
         fetchTransactionData();
-    }, [params.hash]);
+    }, [hash]);
 
     return (
         <div className="min-h-screen flex flex-col">
@@ -41,7 +64,7 @@ export default function TransactionDetailsPage({ params }: { params: { hash: str
             <main className="flex-grow container mx-auto px-4 py-8">
                 <div className="mb-6">
                     <h2 className="text-2xl font-semibold">Transaction Details</h2>
-                    <p className="text-gray-600 dark:text-gray-400 font-mono break-all">{params.hash}</p>
+                    <p className="text-gray-600 dark:text-gray-400 font-mono break-all">{hash}</p>
                 </div>
 
                 {isLoading ? (
@@ -62,11 +85,37 @@ export default function TransactionDetailsPage({ params }: { params: { hash: str
                                 <div className="space-y-4">
                                     <div>
                                         <span className="text-gray-600 dark:text-gray-400 text-sm font-medium">Hash:</span>
-                                        <p className="mt-1 font-mono break-all">{transaction.hash}</p>
+                                        <div className="mt-1 flex items-center">
+                                            <p className="font-mono break-all">{transaction.hash}</p>
+                                            <button
+                                                onClick={() => {
+                                                    try {
+                                                        navigator.clipboard.writeText(transaction.hash);
+                                                        const button = document.getElementById('copy-hash-btn');
+                                                        if (button) {
+                                                            button.classList.add('text-green-500');
+                                                            setTimeout(() => button.classList.remove('text-green-500'), 1000);
+                                                        }
+                                                    } catch (err) {
+                                                        console.error('Failed to copy:', err);
+                                                    }
+                                                }}
+                                                className="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
+                                                title="Copy transaction hash"
+                                                id="copy-hash-btn"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                     <div>
                                         <span className="text-gray-600 dark:text-gray-400 text-sm font-medium">Type:</span>
-                                        <p className="mt-1 font-mono">{transaction.type}</p>
+                                        <p className="mt-1 font-mono">
+                                            {transaction.displayType ||
+                                                (transaction.type ? transaction.type.replace('_transaction', '') : 'Unknown')}
+                                        </p>
                                     </div>
                                     <div>
                                         <span className="text-gray-600 dark:text-gray-400 text-sm font-medium">Status:</span>
@@ -109,7 +158,7 @@ export default function TransactionDetailsPage({ params }: { params: { hash: str
                                         <div>
                                             <span className="text-gray-600 dark:text-gray-400 text-sm font-medium">Events:</span>
                                             <div className="mt-1 space-y-3">
-                                                {transaction.events.map((event: any, index: number) => (
+                                                {transaction.events.map((event: TransactionEvent, index: number) => (
                                                     <div key={index} className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
                                                         <p className="text-sm font-medium text-libra-coral mb-2">{event.type || 'Event'}</p>
                                                         <pre className="overflow-x-auto text-xs">

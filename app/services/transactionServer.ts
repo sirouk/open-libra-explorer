@@ -39,6 +39,19 @@ export async function getTransactionByHash(hash: string): Promise<any> {
             }
         }
 
+        // Process the transaction data before returning
+        if (txData) {
+            // Keep the original type as a separate property
+            txData.originalType = txData.type;
+
+            // Remove '_transaction' from the display type if present
+            if (txData.type && typeof txData.type === 'string' && txData.type.endsWith('_transaction')) {
+                txData.displayType = txData.type.replace('_transaction', '');
+            } else {
+                txData.displayType = txData.type;
+            }
+        }
+
         return txData;
     } catch (error) {
         console.error(`Failed to get transaction details for ${hash}:`, error);

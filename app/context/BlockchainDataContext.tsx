@@ -87,6 +87,11 @@ export function BlockchainDataProvider({ children }: { children: ReactNode }) {
                 });
             }
 
+            // Skip further processing if we didn't get any data
+            if (!height || !currentEpoch || !txData || txData.length === 0) {
+                throw new Error('Incomplete blockchain data received from the server');
+            }
+
             // Process and enhance transaction data
             const enhancedTransactions = txData.map(tx => ({
                 ...tx,
