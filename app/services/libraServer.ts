@@ -1,6 +1,6 @@
 'use server';
 
-import { RPC_URL, DEFAULT_NETWORK, DEFAULT_TX_LIMIT } from '../../config';
+import { RPC_URL, DEFAULT_NETWORK, DEFAULT_TX_LIMIT, DEBUG_MODE } from '../../config';
 
 // Interface for transaction responses
 interface Transaction {
@@ -10,6 +10,8 @@ interface Transaction {
     timestamp: number;
     sender?: string;
     recipient?: string;
+    blockHeight: string;
+    version: string;
 }
 
 // Interface for coin resources
@@ -75,6 +77,10 @@ export async function getLatestTransactions(limit: number = DEFAULT_TX_LIMIT): P
         const ledgerInfo = await client.getLedgerInfo();
         const blockHeight = parseInt(ledgerInfo.block_height, 10);
 
+        if (DEBUG_MODE) {
+            console.log('Server: Current block height:', blockHeight);
+        }
+
         // Try to get transactions from the latest blocks
         const transactions: Transaction[] = [];
         let fetched = 0;
@@ -103,22 +109,61 @@ export async function getLatestTransactions(limit: number = DEFAULT_TX_LIMIT): P
                             // For simplicity, we'll classify all transactions as "Transfer" for now
                             const txInfo: Transaction = {
                                 id: tx.hash,
-                                type: 'Transfer', // Default type
+                                type: 'Unknown', // Default type is now Unknown
                                 amount: '0', // Default amount
-                                timestamp: parseInt(block.block_timestamp, 10) / 1000000, // Convert to milliseconds
+                                timestamp: parseInt(block.block_timestamp, 10) / 1000000, // Convert microseconds to milliseconds
+                                blockHeight: currentBlock.toString(), // Add block height
+                                version: tx.version?.toString() || '' // Add version if available
                             };
+
+                            if (DEBUG_MODE && fetched < 3) {
+                                console.log(`Server: TX ${fetched} raw timestamp: ${block.block_timestamp} (${typeof block.block_timestamp})`);
+                                console.log(`Server: TX ${fetched} processed timestamp: ${txInfo.timestamp} (${typeof txInfo.timestamp})`);
+                                const date = new Date(txInfo.timestamp);
+                                console.log(`Server: TX ${fetched} date string: ${date.toISOString()}`);
+                            }
 
                             // In a real implementation, we would parse the events to get the transaction details
                             if (tx.type === 'user_transaction') {
+                                // Add sender information
+                                if (tx.sender) {
+                                    txInfo.sender = tx.sender;
+                                } else if (tx.sender_account_address) {
+                                    txInfo.sender = tx.sender_account_address;
+                                }
+
                                 // Attempt to determine type from function name or payload
                                 if (tx.payload && typeof tx.payload === 'object') {
                                     const payloadStr = JSON.stringify(tx.payload);
 
+                                    // Try to extract function name
+                                    let functionName = 'Unknown';
+
+                                    if (tx.payload.function) {
+                                        // Get full function path
+                                        const functionPath = tx.payload.function.toString();
+
+                                        // Extract just the module and function name (last two parts)
+                                        const parts = functionPath.split('::');
+                                        if (parts.length >= 2) {
+                                            // Format as "module::function"
+                                            functionName = `${parts[parts.length - 2]}::${parts[parts.length - 1]}`;
+                                        } else {
+                                            functionName = functionPath;
+                                        }
+
+                                        // Set the type based on the function name
+                                        txInfo.type = functionName;
+                                    }
+
+                                    // Special handling for common transaction types
                                     if (payloadStr.includes('::stake::')) {
                                         txInfo.type = 'Stake';
-                                    } else if (payloadStr.includes('::coin::')) {
+                                    } else if (payloadStr.includes('::coin::transfer')) {
                                         txInfo.type = 'Transfer';
-                                    } else {
+                                    } else if (payloadStr.includes('::governance::')) {
+                                        txInfo.type = 'Governance';
+                                    } else if (!tx.payload.function) {
                                         txInfo.type = 'Contract Call';
                                     }
 
@@ -128,6 +173,10 @@ export async function getLatestTransactions(limit: number = DEFAULT_TX_LIMIT): P
                                         txInfo.amount = amountMatch[1];
                                     }
                                 }
+                            } else if (tx.type === 'block_metadata') {
+                                txInfo.type = 'Block Metadata';
+                            } else if (tx.type === 'state_checkpoint') {
+                                txInfo.type = 'State Checkpoint';
                             }
 
                             transactions.push(txInfo);
@@ -168,9 +217,9 @@ export async function getLatestTransactions(limit: number = DEFAULT_TX_LIMIT): P
         console.error('Failed to get latest transactions:', error);
         // Return mock data if there's an error
         return [
-            { id: '0xabc...', type: 'Transfer', amount: '100', timestamp: Date.now() - 1000 * 60 },
-            { id: '0xdef...', type: 'Stake', amount: '500', timestamp: Date.now() - 1000 * 120 },
-            { id: '0xghi...', type: 'Transfer', amount: '250', timestamp: Date.now() - 1000 * 180 },
+            { id: '0xabc...', type: 'Transfer', amount: '100', timestamp: Date.now() - 1000 * 60, blockHeight: '0', version: '0' },
+            { id: '0xdef...', type: 'Stake', amount: '500', timestamp: Date.now() - 1000 * 120, blockHeight: '0', version: '0' },
+            { id: '0xghi...', type: 'Transfer', amount: '250', timestamp: Date.now() - 1000 * 180, blockHeight: '0', version: '0' },
         ];
     }
 }

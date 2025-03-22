@@ -21,4 +21,7 @@ export const DEFAULT_NETWORK = NETWORK.MAINNET;
 export const DEFAULT_TX_LIMIT = 10;
 
 // Auto-refresh interval in milliseconds
-export const AUTO_REFRESH_INTERVAL = 10000; // 10 seconds 
+export const AUTO_REFRESH_INTERVAL = 10000; // 10 seconds
+
+// Debug mode - enables console logging
+export const DEBUG_MODE = true; 

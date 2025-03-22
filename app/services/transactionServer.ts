@@ -31,6 +31,14 @@ export async function getTransactionByHash(hash: string): Promise<any> {
             transactionHash: normalizedHash
         });
 
+        // Extract sender for user transactions
+        if (txData && txData.type === 'user_transaction') {
+            // The sender is already in the transaction data as 'sender'
+            if (!txData.sender && txData.sender_account_address) {
+                txData.sender = txData.sender_account_address;
+            }
+        }
+
         return txData;
     } catch (error) {
         console.error(`Failed to get transaction details for ${hash}:`, error);

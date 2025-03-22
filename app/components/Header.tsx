@@ -33,19 +33,35 @@ export default function Header({ showSearch = true }: HeaderProps) {
                 </Link>
                 {showSearch && (
                     <form onSubmit={handleAccountSearch} className="flex w-full max-w-lg mx-4">
-                        <input
-                            type="text"
-                            placeholder="Search by account address"
-                            className="w-full px-4 py-2 rounded-l-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-libra-coral"
-                            value={accountAddress}
-                            onChange={(e) => setAccountAddress(e.target.value)}
-                        />
-                        <button
-                            type="submit"
-                            className="bg-libra-coral hover:bg-libra-dark text-white px-4 py-2 rounded-r-lg transition-colors"
-                        >
-                            Search
-                        </button>
+                        <div className="flex w-full rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700 focus-within:ring-2 focus-within:ring-libra-coral focus-within:border-transparent">
+                            <input
+                                type="text"
+                                placeholder="Search by account address"
+                                className="w-full px-4 py-2 outline-none border-0 dark:bg-gray-800 dark:text-white"
+                                value={accountAddress}
+                                onChange={(e) => setAccountAddress(e.target.value)}
+                            />
+                            <button
+                                type="submit"
+                                className="bg-libra-coral hover:bg-libra-dark text-white font-medium px-6 py-2 transition-colors flex items-center"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5 mr-1"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                    />
+                                </svg>
+                                Search
+                            </button>
+                        </div>
                     </form>
                 )}
             </div>

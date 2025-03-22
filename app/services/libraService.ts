@@ -17,6 +17,8 @@ export interface Transaction {
     timestamp: number;
     sender?: string;
     recipient?: string;
+    blockHeight?: string;
+    version?: string;
 }
 
 export interface CoinStore {
