@@ -31,16 +31,27 @@ export async function getTransactionByHash(hash: string): Promise<any> {
             transactionHash: normalizedHash
         });
 
-        // Extract sender for user transactions
-        if (txData && txData.type === 'user_transaction') {
-            // The sender is already in the transaction data as 'sender'
-            if (!txData.sender && txData.sender_account_address) {
-                txData.sender = txData.sender_account_address;
-            }
-        }
-
         // Process the transaction data before returning
         if (txData) {
+            // Try to extract address from changes if available
+            if (txData.changes && Array.isArray(txData.changes) && txData.changes.length > 0) {
+                // Look for the first available address in changes
+                for (const change of txData.changes) {
+                    if (change.address && !txData.sender) {
+                        txData.sender = change.address;
+                        break;
+                    }
+                }
+            }
+
+            // Extract sender for user transactions if not already set
+            if (txData.type === 'user_transaction' && !txData.sender) {
+                // The sender is already in the transaction data as 'sender'
+                if (txData.sender_account_address) {
+                    txData.sender = txData.sender_account_address;
+                }
+            }
+
             // Keep the original type as a separate property
             txData.originalType = txData.type;
 

@@ -120,9 +120,32 @@ export async function getLatestTransactions(limit: number = DEFAULT_TX_LIMIT): P
                                 version: tx.version?.toString() || '' // Add version if available
                             };
 
+                            // Try to extract address from changes if available
+                            if (tx.changes && Array.isArray(tx.changes) && tx.changes.length > 0) {
+                                // Look for the first available address in changes
+                                for (const change of tx.changes) {
+                                    if (change.address) {
+                                        txInfo.sender = change.address;
+                                        break;
+                                    }
+                                }
+                            }
+
                             if (DEBUG_MODE && fetched < 3) {
                                 console.log(`Server: TX ${fetched} type:`, tx.type);
                                 console.log(`Server: TX ${fetched} raw:`, JSON.stringify(tx).substring(0, 500) + '...');
+
+                                // Log changes array for debugging
+                                if (tx.changes && Array.isArray(tx.changes)) {
+                                    console.log(`Server: TX ${fetched} has ${tx.changes.length} changes`);
+                                    if (tx.changes.length > 0) {
+                                        console.log(`Server: TX ${fetched} first change:`, JSON.stringify(tx.changes[0]).substring(0, 200) + '...');
+                                        console.log(`Server: TX ${fetched} address from changes:`, txInfo.sender || 'None');
+                                    }
+                                } else {
+                                    console.log(`Server: TX ${fetched} has no changes array`);
+                                }
+
                                 console.log(`Server: TX ${fetched} raw timestamp: ${block.block_timestamp} (${typeof block.block_timestamp})`);
                                 console.log(`Server: TX ${fetched} processed timestamp: ${txInfo.timestamp} (${typeof txInfo.timestamp})`);
                                 const date = new Date(txInfo.timestamp * 1000);
@@ -135,11 +158,13 @@ export async function getLatestTransactions(limit: number = DEFAULT_TX_LIMIT): P
 
                             // In a real implementation, we would parse the events to get the transaction details
                             if (tx.type === 'user_transaction') {
-                                // Add sender information
-                                if (tx.sender) {
-                                    txInfo.sender = tx.sender;
-                                } else if (tx.sender_account_address) {
-                                    txInfo.sender = tx.sender_account_address;
+                                // Add sender information if not already set from changes
+                                if (!txInfo.sender) {
+                                    if (tx.sender) {
+                                        txInfo.sender = tx.sender;
+                                    } else if (tx.sender_account_address) {
+                                        txInfo.sender = tx.sender_account_address;
+                                    }
                                 }
 
                                 // Attempt to determine type from function name or payload

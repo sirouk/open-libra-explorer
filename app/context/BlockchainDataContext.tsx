@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { getBlockHeight, getEpoch, getLatestTransactions } from '../services/libraService';
-import { AUTO_REFRESH_INTERVAL, DEBUG_MODE } from '../../config';
+import { AUTO_REFRESH_INTERVAL, DEBUG_MODE, DEFAULT_TX_LIMIT } from '../../config';
 
 // Define transaction interface with additional properties
 export interface EnhancedTransaction {
@@ -68,7 +68,7 @@ export function BlockchainDataProvider({ children }: { children: ReactNode }) {
             const [height, currentEpoch, txData] = await Promise.all([
                 getBlockHeight(),
                 getEpoch(),
-                getLatestTransactions(10)
+                getLatestTransactions(DEFAULT_TX_LIMIT)
             ]);
 
             // Log transaction data for debugging if enabled
