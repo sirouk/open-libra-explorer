@@ -64,7 +64,7 @@ export default function TransactionPage() {
             <main className="flex-grow container mx-auto px-4 py-8">
                 <div className="mb-6">
                     <h2 className="text-2xl font-semibold">Transaction Details</h2>
-                    <p className="text-gray-600 dark:text-gray-400 font-mono break-all">{hash}</p>
+                    <p className="text-gray-600 dark:text-gray-400 font-mono break-all text-sm">{hash}</p>
                 </div>
 
                 {isLoading ? (
@@ -83,33 +83,6 @@ export default function TransactionPage() {
                         <div className="p-6">
                             {transaction ? (
                                 <div className="space-y-4">
-                                    <div>
-                                        <span className="text-gray-600 dark:text-gray-400 text-sm font-medium">Hash:</span>
-                                        <div className="mt-1 flex items-center">
-                                            <p className="font-mono break-all">{transaction.hash}</p>
-                                            <button
-                                                onClick={() => {
-                                                    try {
-                                                        navigator.clipboard.writeText(transaction.hash);
-                                                        const button = document.getElementById('copy-hash-btn');
-                                                        if (button) {
-                                                            button.classList.add('text-green-500');
-                                                            setTimeout(() => button.classList.remove('text-green-500'), 1000);
-                                                        }
-                                                    } catch (err) {
-                                                        console.error('Failed to copy:', err);
-                                                    }
-                                                }}
-                                                className="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
-                                                title="Copy transaction hash"
-                                                id="copy-hash-btn"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
                                     <div>
                                         <span className="text-gray-600 dark:text-gray-400 text-sm font-medium">Type:</span>
                                         <p className="mt-1 font-mono">
@@ -134,7 +107,32 @@ export default function TransactionPage() {
                                     {transaction.sender && (
                                         <div>
                                             <span className="text-gray-600 dark:text-gray-400 text-sm font-medium">Sender:</span>
-                                            <p className="mt-1 font-mono break-all">{transaction.sender}</p>
+                                            <div className="mt-1 flex items-center">
+                                                <p className="font-mono break-all">{transaction.sender}</p>
+                                                <button
+                                                    onClick={() => {
+                                                        try {
+                                                            const addressToCopy = transaction.sender?.startsWith('0x') ?
+                                                                transaction.sender.substring(2) : transaction.sender || '';
+                                                            navigator.clipboard.writeText(addressToCopy);
+                                                            const button = document.getElementById('copy-sender-btn');
+                                                            if (button) {
+                                                                button.classList.add('text-green-500');
+                                                                setTimeout(() => button.classList.remove('text-green-500'), 1000);
+                                                            }
+                                                        } catch (err) {
+                                                            console.error('Failed to copy:', err);
+                                                        }
+                                                    }}
+                                                    className="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
+                                                    title="Copy sender address"
+                                                    id="copy-sender-btn"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                    </svg>
+                                                </button>
+                                            </div>
                                         </div>
                                     )}
 
