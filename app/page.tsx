@@ -94,20 +94,27 @@ export default function Home() {
 
                 {transactions.length > 0 ? (
                   transactions.map((tx) => (
-                    <div key={tx.id} className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <div key={tx.id} className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors relative">
+                      {/* Background link - will be covered by other links when they're present */}
+                      <Link
+                        href={`/tx/${tx.id}`}
+                        className="absolute inset-0 z-0"
+                        aria-label={`View transaction ${tx.id} details`}
+                      />
+
                       {/* Desktop view - only visible on md screens and up */}
-                      <div className="hidden md:grid grid-cols-5 gap-4 items-center text-center">
+                      <div className="hidden md:grid grid-cols-5 gap-4 items-center text-center relative z-10">
                         <div className="text-gray-700 dark:text-gray-300">
-                          <Link href={`/tx/${tx.id}`} className="hover:underline">
+                          <Link href={`/tx/${tx.id}`} className="hover:underline relative z-10">
                             <p className="text-sm font-mono">{Number(tx.blockHeight).toLocaleString()}</p>
                           </Link>
                         </div>
                         <div className="text-gray-700 dark:text-gray-300">
-                          <Link href={`/tx/${tx.id}`} className="hover:underline">
+                          <Link href={`/tx/${tx.id}`} className="hover:underline relative z-10">
                             <p className="text-sm font-mono">{Number(tx.version).toLocaleString()}</p>
                           </Link>
                         </div>
-                        <div className="flex items-center justify-center">
+                        <div className="flex items-center justify-center relative z-10">
                           {tx.sender && tx.sender.length > 10 ? (
                             <>
                               <Link
@@ -173,7 +180,7 @@ export default function Home() {
                             </>
                           )}
                         </div>
-                        <div className="flex justify-center">
+                        <div className="flex justify-center relative z-10">
                           <Link href={`/tx/${tx.id}`} className="hover:underline">
                             <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px] inline-block
                               ${tx.type === 'Transfer' ? 'bg-blue-100 text-blue-800' :
@@ -186,7 +193,7 @@ export default function Home() {
                             </span>
                           </Link>
                         </div>
-                        <div className="text-gray-500 text-sm text-center">
+                        <div className="text-gray-500 text-sm text-center relative z-10">
                           <Link href={`/tx/${tx.id}`} className="hover:underline">
                             {tx.formattedDate || (() => {
                               return new Date(tx.timestamp * 1000).toLocaleString();
@@ -196,7 +203,7 @@ export default function Home() {
                       </div>
 
                       {/* Mobile view - card style layout */}
-                      <div className="md:hidden flex flex-col">
+                      <div className="md:hidden flex flex-col relative z-10">
                         <div className="flex justify-between items-center mb-2">
                           <div className="flex items-center">
                             <Link href={`/tx/${tx.id}`} className="hover:underline">
@@ -221,7 +228,7 @@ export default function Home() {
                         </div>
 
                         <div className="flex justify-between items-center">
-                          <div className="flex items-center">
+                          <div className="flex items-center relative z-10">
                             <span className="text-xs text-gray-500 mr-1">From:</span>
                             {tx.sender && tx.sender.length > 10 ? (
                               <div className="flex items-center">
