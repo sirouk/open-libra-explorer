@@ -112,7 +112,7 @@ export default function Home() {
                           </Link>
                         </div>
                         <div className="flex items-center justify-center">
-                          {tx.sender ? (
+                          {tx.sender && tx.sender.length > 10 ? (
                             <>
                               <Link
                                 href={`/account/${tx.sender}`}
@@ -145,7 +145,7 @@ export default function Home() {
                                 </svg>
                               </button>
                             </>
-                          ) : tx.id && (
+                          ) : (
                             <>
                               <span className="text-libra-accent font-mono px-2 py-1 inline-block">
                                 {tx.id.startsWith('0x') ?

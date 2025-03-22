@@ -18,7 +18,7 @@ export const NETWORK = {
 export const DEFAULT_NETWORK = NETWORK.MAINNET;
 
 // Number of transactions to show on the home page
-export const DEFAULT_TX_LIMIT = 100;
+export const DEFAULT_TX_LIMIT = 20;
 
 // Auto-refresh interval in milliseconds
 export const AUTO_REFRESH_INTERVAL = 10000; // 10 seconds
