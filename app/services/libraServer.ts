@@ -133,13 +133,13 @@ export async function getLatestTransactions(limit: number = DEFAULT_TX_LIMIT): P
 
                             if (DEBUG_MODE && fetched < 3) {
                                 console.log(`Server: TX ${fetched} type:`, tx.type);
-                                console.log(`Server: TX ${fetched} raw:`, JSON.stringify(tx).substring(0, 500) + '...');
+                                console.log(`Server: TX ${fetched} raw:`, JSON.stringify(tx));
 
                                 // Log changes array for debugging
                                 if (tx.changes && Array.isArray(tx.changes)) {
                                     console.log(`Server: TX ${fetched} has ${tx.changes.length} changes`);
                                     if (tx.changes.length > 0) {
-                                        console.log(`Server: TX ${fetched} first change:`, JSON.stringify(tx.changes[0]).substring(0, 200) + '...');
+                                        console.log(`Server: TX ${fetched} first change:`, JSON.stringify(tx.changes[0]));
                                         console.log(`Server: TX ${fetched} address from changes:`, txInfo.sender || 'None');
                                     }
                                 } else {

@@ -24,7 +24,7 @@ export default function Footer() {
                         <a href="https://docs.openlibra.io" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 dark:text-gray-400 hover:text-libra-coral">
                             Docs
                         </a>
-                        <a href="https://github.com/openlibra" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 dark:text-gray-400 hover:text-libra-coral">
+                        <a href="http://github.com/0LNetworkCommunity" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 dark:text-gray-400 hover:text-libra-coral">
                             GitHub
                         </a>
                     </div>

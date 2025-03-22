@@ -20,6 +20,7 @@ export interface EnhancedTransaction {
 interface BlockchainDataContextType {
     blockHeight: number;
     epoch: number;
+    chainId: string;
     transactions: EnhancedTransaction[];
     isLoading: boolean;
     isRefreshing: boolean;
@@ -33,6 +34,7 @@ const BlockchainDataContext = createContext<BlockchainDataContextType | undefine
 export function BlockchainDataProvider({ children }: { children: ReactNode }) {
     const [blockHeight, setBlockHeight] = useState<number>(0);
     const [epoch, setEpoch] = useState<number>(0);
+    const [chainId, setChainId] = useState<string>("v8-twin");
     const [transactions, setTransactions] = useState<EnhancedTransaction[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -151,6 +153,7 @@ export function BlockchainDataProvider({ children }: { children: ReactNode }) {
         <BlockchainDataContext.Provider value={{
             blockHeight,
             epoch,
+            chainId,
             transactions,
             isLoading,
             isRefreshing,
