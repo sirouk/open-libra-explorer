@@ -31,7 +31,15 @@ export const MOCK_TRANSACTIONS: Transaction[] = [
 // Client-side implementations
 async function clientGetBlockHeight(): Promise<number> {
     try {
-        const sdk = await import('open-libra-sdk');
+        // Try to load the SDK with better error handling for browser compatibility
+        let sdk;
+        try {
+            sdk = await import('open-libra-sdk');
+        } catch (sdkError) {
+            console.error('Failed to import open-libra-sdk:', sdkError);
+            throw new Error('The Open Libra SDK is not compatible with browser environments');
+        }
+
         const client = new sdk.LibraClient(sdk.Network.MAINNET, RPC_URL);
         const blockHeight = await client.getChainId();
         return parseInt(blockHeight, 10) || 0;
@@ -43,7 +51,15 @@ async function clientGetBlockHeight(): Promise<number> {
 
 async function clientGetEpoch(): Promise<number> {
     try {
-        const sdk = await import('open-libra-sdk');
+        // Try to load the SDK with better error handling for browser compatibility
+        let sdk;
+        try {
+            sdk = await import('open-libra-sdk');
+        } catch (sdkError) {
+            console.error('Failed to import open-libra-sdk:', sdkError);
+            throw new Error('The Open Libra SDK is not compatible with browser environments');
+        }
+
         const client = new sdk.LibraClient(sdk.Network.MAINNET, RPC_URL);
         const result = await client.getEpoch();
         return parseInt(result, 10) || 0;
@@ -55,7 +71,15 @@ async function clientGetEpoch(): Promise<number> {
 
 async function clientGetLatestTransactions(limit: number = DEFAULT_TX_LIMIT): Promise<Transaction[]> {
     try {
-        const sdk = await import('open-libra-sdk');
+        // Try to load the SDK with better error handling for browser compatibility
+        let sdk;
+        try {
+            sdk = await import('open-libra-sdk');
+        } catch (sdkError) {
+            console.error('Failed to import open-libra-sdk:', sdkError);
+            throw new Error('The Open Libra SDK is not compatible with browser environments');
+        }
+
         const client = new sdk.LibraClient(sdk.Network.MAINNET, RPC_URL);
 
         // Get the current block height
@@ -146,7 +170,15 @@ async function clientGetLatestTransactions(limit: number = DEFAULT_TX_LIMIT): Pr
 
 async function clientGetAccountResources(address: string): Promise<any> {
     try {
-        const sdk = await import('open-libra-sdk');
+        // Try to load the SDK with better error handling for browser compatibility
+        let sdk;
+        try {
+            sdk = await import('open-libra-sdk');
+        } catch (sdkError) {
+            console.error('Failed to import open-libra-sdk:', sdkError);
+            throw new Error('The Open Libra SDK is not compatible with browser environments');
+        }
+
         const client = new sdk.LibraClient(sdk.Network.MAINNET, RPC_URL);
 
         // Normalize address

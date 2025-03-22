@@ -18,7 +18,15 @@ function normalizeHexString(hexString: string): string {
 // Client-side implementation of getTransactionByHash
 async function clientGetTransactionByHash(hash: string): Promise<any> {
     try {
-        const sdk = await import('open-libra-sdk');
+        // Try to load the SDK with better error handling for browser compatibility
+        let sdk;
+        try {
+            sdk = await import('open-libra-sdk');
+        } catch (sdkError) {
+            console.error('Failed to import open-libra-sdk:', sdkError);
+            throw new Error('The Open Libra SDK is not compatible with browser environments');
+        }
+
         const client = new sdk.LibraClient(sdk.Network.MAINNET, RPC_URL);
 
         // Normalize the transaction hash

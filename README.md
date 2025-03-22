@@ -27,10 +27,12 @@ This explorer supports both client-side and server-side API calls to the blockch
 ```typescript
 // When true, API calls will be made directly from the browser
 // When false, API calls will be made server-side using server actions
-export const CLIENT_SIDE_API = true;
+export const CLIENT_SIDE_API = false;
 ```
 
 Setting `CLIENT_SIDE_API` to `true` makes all blockchain queries run directly in the browser, which can be useful for development or when you want to reduce server load. Setting it to `false` uses Next.js server actions for all API calls, which can be more secure and performant for production use.
+
+> **Note:** Client-side mode (`CLIENT_SIDE_API = true`) currently has compatibility issues with the Open Libra SDK in browser environments. It's recommended to keep this setting as `false` unless you've resolved these compatibility issues. Error messages like `ReferenceError: module is not defined` indicate browser compatibility problems with the SDK.
 
 ## Learn More
 
