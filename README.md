@@ -34,6 +34,62 @@ Setting `CLIENT_SIDE_API` to `true` makes all blockchain queries run directly in
 
 > **Note:** Client-side mode (`CLIENT_SIDE_API = true`) currently has compatibility issues with the Open Libra SDK in browser environments. It's recommended to keep this setting as `false` unless you've resolved these compatibility issues. Error messages like `ReferenceError: module is not defined` indicate browser compatibility problems with the SDK.
 
+## Production Deployment
+
+### Building Without Type Checking
+
+For production deployment, you can build the application without TypeScript or ESLint checks using:
+
+```bash
+npm run build-no-lint
+```
+
+This is useful when you need to deploy quickly or when there are TypeScript errors that don't affect runtime functionality.
+
+### Running in Production
+
+To run the application on port 3000 for production use:
+
+```bash
+npm run start-prod
+```
+
+Or to build and run in a single command:
+
+```bash
+npm run build-no-lint && npm run start-prod
+```
+
+### Nginx Configuration
+
+The application is designed to work with Nginx as a reverse proxy. Add this to your Nginx configuration:
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com; # or localhost for local testing
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Test and restart Nginx after adding this configuration:
+
+```bash
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
