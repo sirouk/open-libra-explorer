@@ -183,12 +183,12 @@ export default function Home() {
                         <div className="flex justify-center relative z-10">
                           <Link href={`/tx/${tx.id}`} className="hover:underline">
                             <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px] inline-block
-                              ${tx.type === 'Transfer' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                                tx.type === 'Stake' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                                  tx.type === 'Governance' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                                    tx.type === 'Block Metadata' ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' :
-                                      tx.type === 'State Checkpoint' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
-                                        'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200'}`}>
+                              ${tx.type === 'Transfer' ? 'bg-blue-100 text-blue-800' :
+                                tx.type === 'Stake' ? 'bg-green-100 text-green-800' :
+                                  tx.type === 'Governance' ? 'bg-yellow-100 text-yellow-800' :
+                                    tx.type === 'Block Metadata' ? 'bg-gray-100 text-gray-800' :
+                                      tx.type === 'State Checkpoint' ? 'bg-purple-100 text-purple-800' :
+                                        'bg-indigo-100 text-indigo-800'}`}>
                               {tx.type ? tx.type.replace('_transaction', '') : 'Unknown'}
                             </span>
                           </Link>
@@ -208,12 +208,12 @@ export default function Home() {
                           <div className="flex items-center">
                             <Link href={`/tx/${tx.id}`} className="hover:underline">
                               <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px] inline-block mr-2
-                                ${tx.type === 'Transfer' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                                  tx.type === 'Stake' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                                    tx.type === 'Governance' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                                      tx.type === 'Block Metadata' ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' :
-                                        tx.type === 'State Checkpoint' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
-                                          'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200'}`}>
+                                ${tx.type === 'Transfer' ? 'bg-blue-100 text-blue-800' :
+                                  tx.type === 'Stake' ? 'bg-green-100 text-green-800' :
+                                    tx.type === 'Governance' ? 'bg-yellow-100 text-yellow-800' :
+                                      tx.type === 'Block Metadata' ? 'bg-gray-100 text-gray-800' :
+                                        tx.type === 'State Checkpoint' ? 'bg-purple-100 text-purple-800' :
+                                          'bg-indigo-100 text-indigo-800'}`}>
                                 {tx.type ? tx.type.replace('_transaction', '') : 'Unknown'}
                               </span>
                             </Link>

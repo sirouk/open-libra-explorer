@@ -64,7 +64,7 @@ export default function Header({ showSearch = true }: HeaderProps) {
                         height={40}
                         className="mr-3"
                     />
-                    <h1 className="text-2xl font-bold text-libra-coral">Open Libra Explorer</h1>
+                    <h1 className="text-2xl font-bold text-libra-coral dark:text-white">Open Libra Explorer</h1>
                 </Link>
                 {showSearch && (
                     <form onSubmit={handleSearch} className="flex flex-col w-full sm:max-w-lg sm:ml-4">
