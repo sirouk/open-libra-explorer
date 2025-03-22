@@ -20,8 +20,8 @@ export default function Header({ showSearch = true }: HeaderProps) {
 
     return (
         <header className="bg-white dark:bg-gray-900 shadow">
-            <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-                <Link href="/" className="flex items-center">
+            <div className="container mx-auto px-4 py-4 flex flex-col sm:flex-row items-center">
+                <Link href="/" className="flex items-center w-full sm:w-auto mb-4 sm:mb-0">
                     <Image
                         src="/images/logo.svg"
                         alt="Open Libra Logo"
@@ -32,7 +32,7 @@ export default function Header({ showSearch = true }: HeaderProps) {
                     <h1 className="text-2xl font-bold text-libra-coral">Open Libra Explorer</h1>
                 </Link>
                 {showSearch && (
-                    <form onSubmit={handleAccountSearch} className="flex w-full max-w-lg mx-4">
+                    <form onSubmit={handleAccountSearch} className="flex w-full sm:max-w-lg sm:ml-4">
                         <div className="flex w-full rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700 focus-within:ring-2 focus-within:ring-libra-coral focus-within:border-transparent">
                             <input
                                 type="text"

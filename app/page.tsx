@@ -93,8 +93,8 @@ export default function Home() {
                 </div>
               </div>
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {/* Table Header */}
-                <div className="px-6 py-3 bg-gray-50 dark:bg-gray-900 text-xs font-medium text-gray-500 uppercase tracking-wider grid grid-cols-5 gap-4 text-center">
+                {/* Table Header - only visible on larger screens */}
+                <div className="hidden md:grid px-6 py-3 bg-gray-50 dark:bg-gray-900 text-xs font-medium text-gray-500 uppercase tracking-wider grid-cols-5 gap-4 text-center">
                   <div>Block Height</div>
                   <div>Version</div>
                   <div>From</div>
@@ -105,7 +105,8 @@ export default function Home() {
                 {transactions.length > 0 ? (
                   transactions.map((tx) => (
                     <div key={tx.id} className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                      <div className="grid grid-cols-5 gap-4 items-center text-center">
+                      {/* Desktop view - only visible on md screens and up */}
+                      <div className="hidden md:grid grid-cols-5 gap-4 items-center text-center">
                         <div className="text-gray-700 dark:text-gray-300">
                           <Link href={`/tx/${tx.id}`} className="hover:underline">
                             <p className="text-sm font-mono">{Number(tx.blockHeight).toLocaleString()}</p>
@@ -201,6 +202,81 @@ export default function Home() {
                               return new Date(tx.timestamp * 1000).toLocaleString();
                             })()}
                           </Link>
+                        </div>
+                      </div>
+
+                      {/* Mobile view - card style layout */}
+                      <div className="md:hidden flex flex-col">
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="flex items-center">
+                            <Link href={`/tx/${tx.id}`} className="hover:underline">
+                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px] inline-block mr-2
+                                ${tx.type === 'Transfer' ? 'bg-blue-100 text-blue-800' :
+                                  tx.type === 'Stake' ? 'bg-green-100 text-green-800' :
+                                    tx.type === 'Governance' ? 'bg-yellow-100 text-yellow-800' :
+                                      tx.type === 'Block Metadata' ? 'bg-gray-100 text-gray-800' :
+                                        tx.type === 'State Checkpoint' ? 'bg-purple-100 text-purple-800' :
+                                          'bg-indigo-100 text-indigo-800'}`}>
+                                {tx.type ? tx.type.replace('_transaction', '') : 'Unknown'}
+                              </span>
+                            </Link>
+                            <Link href={`/tx/${tx.id}`} className="hover:underline text-sm font-mono text-gray-700 dark:text-gray-300">
+                              {tx.version && `#${Number(tx.version).toLocaleString()}`}
+                            </Link>
+                          </div>
+                          <div className="text-gray-500 text-xs">
+                            {tx.formattedDate || (() => {
+                              return new Date(tx.timestamp * 1000).toLocaleString();
+                            })()}
+                          </div>
+                        </div>
+
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center">
+                            <span className="text-xs text-gray-500 mr-1">From:</span>
+                            {tx.sender && tx.sender.length > 10 ? (
+                              <div className="flex items-center">
+                                <Link
+                                  href={`/account/${tx.sender}`}
+                                  className="text-libra-accent font-mono hover:underline cursor-pointer text-sm"
+                                >
+                                  {tx.sender.startsWith('0x') ?
+                                    tx.sender.substring(2, 6) + '...' + tx.sender.substring(tx.sender.length - 4) :
+                                    tx.sender.substring(0, 4) + '...' + tx.sender.substring(tx.sender.length - 4)
+                                  }
+                                </Link>
+                                <button
+                                  onClick={(e) => {
+                                    try {
+                                      const addressToCopy = tx.sender?.startsWith('0x') ?
+                                        tx.sender.substring(2) : tx.sender || '';
+                                      navigator.clipboard.writeText(addressToCopy);
+                                      const button = e.currentTarget;
+                                      button.classList.add('text-green-500');
+                                      setTimeout(() => button.classList.remove('text-green-500'), 1000);
+                                    } catch (err) {
+                                      console.error('Failed to copy:', err);
+                                    }
+                                  }}
+                                  className="ml-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                  </svg>
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-libra-accent font-mono text-sm">
+                                {tx.id.startsWith('0x') ?
+                                  tx.id.substring(2, 6) + '...' + tx.id.substring(tx.id.length - 4) :
+                                  tx.id.substring(0, 4) + '...' + tx.id.substring(tx.id.length - 4)
+                                }
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs font-mono text-gray-700 dark:text-gray-300">
+                            Block: {Number(tx.blockHeight).toLocaleString()}
+                          </div>
                         </div>
                       </div>
                     </div>
