@@ -5,6 +5,11 @@
 // RPC endpoint for Open Libra blockchain
 export const RPC_URL = 'https://rpc.openlibra.space:8080/v1';
 
+// Client-side mode configuration
+// When true, API calls will be made directly from the browser
+// When false, API calls will be made server-side using server actions
+export const CLIENT_SIDE_API = true;
+
 // Libra token has 6 decimals (1,000,000 base units = 1 LIBRA)
 export const LIBRA_DECIMALS = 6;
 

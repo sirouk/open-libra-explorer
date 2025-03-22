@@ -20,6 +20,18 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Configuration
+
+This explorer supports both client-side and server-side API calls to the blockchain. You can configure this behavior in the `config.ts` file:
+
+```typescript
+// When true, API calls will be made directly from the browser
+// When false, API calls will be made server-side using server actions
+export const CLIENT_SIDE_API = true;
+```
+
+Setting `CLIENT_SIDE_API` to `true` makes all blockchain queries run directly in the browser, which can be useful for development or when you want to reduce server load. Setting it to `false` uses Next.js server actions for all API calls, which can be more secure and performant for production use.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

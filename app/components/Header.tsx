@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { getAccountResources } from '../services/libraService';
-import { getTransactionByHash } from '../services/transactionServer';
+import { getTransactionByHash } from '../services/transactionService';
 
 interface HeaderProps {
     showSearch?: boolean;
