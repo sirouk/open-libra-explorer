@@ -71,7 +71,7 @@ export default function Header({ showSearch = true }: HeaderProps) {
                         <div className="flex w-full rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700 focus-within:ring-2 focus-within:ring-libra-coral focus-within:border-transparent">
                             <input
                                 type="text"
-                                placeholder="Search by account address or transaction hash"
+                                placeholder="Search by account or tx hash"
                                 className="w-full px-4 py-2 outline-none border-0 dark:bg-gray-800 dark:text-white"
                                 value={searchInput}
                                 onChange={(e) => setSearchInput(e.target.value)}
