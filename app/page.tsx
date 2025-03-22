@@ -45,7 +45,7 @@ export default function Home() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-t-4 border-libra-coral">
                 <h2 className="text-xl font-semibold mb-2">Block Height</h2>
                 <p className="text-3xl font-mono">{blockHeight?.toLocaleString()}</p>
@@ -58,15 +58,11 @@ export default function Home() {
                 <h2 className="text-xl font-semibold mb-2">Chain ID</h2>
                 <p className="text-3xl font-mono">{chainId}</p>
               </div>
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-t-4 border-libra-dark">
-                <h2 className="text-xl font-semibold mb-2">Transactions</h2>
-                <p className="text-3xl font-mono">{transactions.length} recent</p>
-              </div>
             </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Recent Transactions</h2>
+                <h2 className="text-xl font-semibold">Recent Transactions ({transactions.length})</h2>
                 <div className="flex items-center">
                   <button
                     onClick={refreshData}
