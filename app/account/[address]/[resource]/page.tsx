@@ -51,6 +51,54 @@ function formatBalance(rawBalance: string | number): string {
     }
 }
 
+// Helper to get a clean slug from a resource type
+function getSlugFromResourceType(resourceType: string): string {
+    // Get the last part after ::
+    const parts = resourceType.split('::');
+    const lastPart = parts[parts.length - 1].toLowerCase();
+    // Replace underscores with hyphens
+    return lastPart.replace(/_/g, '-');
+}
+
+// Helper to get the display name from a resource type
+function getDisplayNameFromResourceType(resourceType: string): string {
+    // Get the last part after ::
+    const parts = resourceType.split('::');
+    const lastPart = parts[parts.length - 1];
+    // If it has proper capitalization already (like "AccountType"), use it
+    // Otherwise capitalize first letter of each word
+    return lastPart.replace(/(_|^)[a-z]/g, (match) =>
+        match.replace('_', ' ').toUpperCase()
+    );
+}
+
+// Define interface for resource type
+interface ResourceType {
+    type: string;
+    displayName: string;
+}
+
+// Define interface for resource
+interface Resource {
+    type: string;
+    data: any;
+}
+
+// Find resource type from slug
+function findResourceTypeFromSlug(slug: string, availableTypes: ResourceType[]): string | null {
+    // Convert slug back to potential lastPart (replace hyphens with underscores)
+    const normalizedSlug = slug.replace(/-/g, '_').toLowerCase();
+
+    // Find matching resource by the last part
+    const matchingResource = availableTypes.find(rt => {
+        const parts = rt.type.split('::');
+        const lastPart = parts[parts.length - 1].toLowerCase();
+        return lastPart === normalizedSlug;
+    });
+
+    return matchingResource ? matchingResource.type : null;
+}
+
 // Only update the current resource type without triggering a full data fetch
 function setCurrentResourceType(address: string, resourceType: string) {
     console.log(`Setting current resource for ${address} to ${resourceType}`);
@@ -63,7 +111,7 @@ export default function AccountResourcePage() {
     const params = useParams();
     const router = useRouter();
     const address = params.address as string;
-    const resourceType = decodeURIComponent(params.resource as string);
+    const slug = params.resource as string;
 
     // Use the account data hook - with our caching improvements, this will only fetch once
     const { isLoading, error, resourceTypes, currentAccount, accountData } = useAccountData(address);
@@ -71,21 +119,20 @@ export default function AccountResourcePage() {
     // When resource types change or on initial load, find the matching resource type
     useEffect(() => {
         if (!isLoading.get() && !error.get() && resourceTypes.get().length > 0) {
-            // Find the requested resource
-            const foundResourceType = resourceTypes.get().find(
-                rt => rt.type.toLowerCase() === resourceType.toLowerCase()
-            );
+            // Find the requested resource by slug
+            const fullResourceType = findResourceTypeFromSlug(slug, resourceTypes.get());
 
             // If resource exists, set it as current without triggering a fetch
-            if (foundResourceType) {
-                setCurrentResourceType(address, foundResourceType.type);
+            if (fullResourceType) {
+                setCurrentResourceType(address, fullResourceType);
             } else {
                 // If requested resource doesn't exist, redirect to the first available resource
-                const firstResource = resourceTypes.get()[0].type;
-                router.replace(`/account/${address}/${firstResource.toLowerCase()}`);
+                const firstResourceType = resourceTypes.get()[0].type;
+                const firstResourceSlug = getSlugFromResourceType(firstResourceType);
+                router.replace(`/account/${address}/${firstResourceSlug}`);
             }
         }
-    }, [resourceTypes, address, resourceType, isLoading, error, router]);
+    }, [resourceTypes, address, slug, isLoading, error, router]);
 
     // Show loading spinner while data is being fetched
     if (isLoading.get()) {
@@ -152,7 +199,7 @@ export default function AccountResourcePage() {
                                         const balance = typeof accountData?.balance?.get === 'function'
                                             ? accountData.balance.get()
                                             : accountData?.balance || 0;
-                                        return formatBalance(balance);
+                                        return formatBalance(balance.toString());
                                     } catch (e) {
                                         console.warn('Error rendering balance:', e);
                                         return '0';
@@ -190,19 +237,24 @@ export default function AccountResourcePage() {
                 {resourceTypes.get().length > 0 && (
                     <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700">
                         <div className="flex flex-wrap gap-2">
-                            {resourceTypes.get().map((type) => (
-                                <Link
-                                    key={type.type}
-                                    href={`/account/${address}/${encodeURIComponent(type.type.toLowerCase())}`}
-                                    className={`px-3 py-1.5 text-sm font-medium rounded-md 
-                                        ${type.type.toLowerCase() === resourceType.toLowerCase()
-                                            ? 'bg-libra-coral text-white'
-                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                                        }`}
-                                >
-                                    {type.displayName || type.type.split('::').pop() || 'Resource'}
-                                </Link>
-                            ))}
+                            {resourceTypes.get().map((type) => {
+                                const resourceSlug = getSlugFromResourceType(type.type);
+                                const displayName = type.displayName || getDisplayNameFromResourceType(type.type);
+
+                                return (
+                                    <Link
+                                        key={type.type}
+                                        href={`/account/${address}/${resourceSlug}`}
+                                        className={`px-3 py-1.5 text-sm font-medium rounded-md 
+                                            ${findResourceTypeFromSlug(slug, [type]) === type.type
+                                                ? 'bg-libra-coral text-white'
+                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                            }`}
+                                    >
+                                        {displayName}
+                                    </Link>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
@@ -211,28 +263,30 @@ export default function AccountResourcePage() {
                 <div className="p-6 space-y-6">
                     {(() => {
                         // Safely extract resources array
-                        let resources = [];
+                        let resources: Resource[] = [];
                         try {
                             // Get the account data if it exists
                             const account = accountData || {};
                             // Extract resources array, handle both observable and regular objects
-                            resources = (typeof account.resources?.get === 'function')
-                                ? account.resources.get()
-                                : Array.isArray(account.resources)
-                                    ? account.resources
-                                    : [];
+                            if (account && 'resources' in account) {
+                                resources = (typeof account.resources?.get === 'function')
+                                    ? account.resources.get()
+                                    : Array.isArray(account.resources)
+                                        ? account.resources
+                                        : [];
+                            }
                         } catch (e) {
                             console.error('Error accessing resources:', e);
                         }
 
                         // If we have resources, filter and render them
                         if (resources.length > 0) {
-                            const filteredResources = resources.filter(res => {
+                            // Find the current full resource type from slug
+                            const currentResourceType = findResourceTypeFromSlug(slug, resourceTypes.get());
+
+                            const filteredResources = resources.filter((res: Resource) => {
                                 try {
-                                    // Normalize both strings for comparison
-                                    const resourceTypeNormalized = (res.type || '').toLowerCase();
-                                    const currentTypeNormalized = resourceType.toLowerCase();
-                                    return resourceTypeNormalized === currentTypeNormalized;
+                                    return (res.type || '').toLowerCase() === (currentResourceType || '').toLowerCase();
                                 } catch (e) {
                                     console.error('Error comparing resource types:', e);
                                     return false;
@@ -240,7 +294,7 @@ export default function AccountResourcePage() {
                             });
 
                             if (filteredResources.length > 0) {
-                                return filteredResources.map((resource, index) => (
+                                return filteredResources.map((resource: Resource, index: number) => (
                                     <div key={index} className="bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800">
                                         <div className="px-4 py-3 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                                             <h4 className="font-medium text-gray-800 dark:text-gray-200">{resource.type || 'Unknown Resource'}</h4>

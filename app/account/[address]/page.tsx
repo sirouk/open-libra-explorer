@@ -7,6 +7,15 @@ import Link from 'next/link';
 import { fetchAccountData } from '../../store/actions';
 import { store } from '../../store';
 
+// Helper to get a clean slug from a resource type
+function getSlugFromResourceType(resourceType: string): string {
+    // Get the last part after ::
+    const parts = resourceType.split('::');
+    const lastPart = parts[parts.length - 1].toLowerCase();
+    // Replace underscores with hyphens
+    return lastPart.replace(/_/g, '-');
+}
+
 // Simple loading component for the redirect page
 function LoadingSpinner({ message = "Loading account data..." }) {
     return (
@@ -25,13 +34,16 @@ export default function AccountPage() {
     const router = useRouter();
     const { isLoading, error, resourceTypes } = useAccountData(address);
 
-    // Redirect to the first resource type (lowercase) once data is loaded
+    // Redirect to the first resource type using the new slug format once data is loaded
     useEffect(() => {
         if (!isLoading.get() && !error.get() && resourceTypes.get().length > 0) {
-            console.log(`Redirecting to first resource: ${resourceTypes.get()[0].type}`);
+            const firstResourceType = resourceTypes.get()[0].type;
+            const resourceSlug = getSlugFromResourceType(firstResourceType);
 
-            // Navigate to the first resource type, ensuring lowercase
-            router.replace(`/account/${address}/${resourceTypes.get()[0].type.toLowerCase()}`);
+            console.log(`Redirecting to first resource: ${firstResourceType} (slug: ${resourceSlug})`);
+
+            // Navigate to the first resource using the slug
+            router.replace(`/account/${address}/${resourceSlug}`);
         }
     }, [isLoading, error, resourceTypes, address, router]);
 
