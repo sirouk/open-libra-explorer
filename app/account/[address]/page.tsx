@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useAccountData } from '../../context/AccountDataContext';
+import { useAccountData } from '../../store/hooks';
 
 // Simple loading component for the redirect page
 function LoadingSpinner() {
@@ -19,18 +19,18 @@ export default function AccountPage() {
     const address = params.address as string;
 
     const router = useRouter();
-    const { isLoading, error, resourceTypes } = useAccountData();
+    const { isLoading, error, resourceTypes } = useAccountData(address);
 
     // Redirect to the first resource type (lowercase) once data is loaded
     useEffect(() => {
-        if (!isLoading && !error && resourceTypes.length > 0) {
+        if (!isLoading.get() && !error.get() && resourceTypes.get().length > 0) {
             // Navigate to the first resource type, ensuring lowercase
-            router.replace(`/account/${address}/${resourceTypes[0].toLowerCase()}`);
+            router.replace(`/account/${address}/${resourceTypes.get()[0].type.toLowerCase()}`);
         }
     }, [isLoading, error, resourceTypes, address, router]);
 
     // Show loading spinner while loading or redirecting
-    if (isLoading || resourceTypes.length > 0) {
+    if (isLoading.get() || resourceTypes.get().length > 0) {
         return <LoadingSpinner />;
     }
 

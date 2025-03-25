@@ -1,47 +1,29 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from "next/font/google";
-import { BlockchainDataProvider } from './context/BlockchainDataContext';
-import { TransactionProvider } from './context/TransactionContext';
+import { Inter } from 'next/font/google';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+// Initialize Legend State
+import '@legendapp/state/config';
+import ThemeProvider from './components/ThemeProvider';
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Open Libra Explorer',
-  description: 'Blockchain explorer for Open Libra',
-  icons: {
-    icon: [
-      { url: '/images/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/images/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
-    ],
-    apple: { url: '/images/apple-touch-icon.png', sizes: '180x180' },
-    other: [
-      { url: '/images/safari-pinned-tab.svg', rel: 'mask-icon' },
-    ],
-  },
+  description: 'Explore the Open Libra blockchain',
 };
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-libra-bg`}>
-        <BlockchainDataProvider>
-          <TransactionProvider>
-            {children}
-          </TransactionProvider>
-        </BlockchainDataProvider>
+    <html lang="en" className="h-full">
+      <body className={`${inter.className} min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white`}>
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
