@@ -3,85 +3,92 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
-import { useAccountData } from '../../../context/AccountDataContext';
+import { useAccountData } from '../../../store/hooks';
+import { store } from '../../../store';
 import { LIBRA_DECIMALS } from '../../../../config';
 
 // Format raw balance to LIBRA display format
 function formatBalance(rawBalance: string | number): string {
-    const balance = typeof rawBalance === 'string' ? BigInt(rawBalance) : BigInt(rawBalance);
-    const divisor = BigInt(10 ** LIBRA_DECIMALS);
+    // Ensure we're working with a primitive value, not an observable
+    if (typeof rawBalance === 'object' && rawBalance !== null && 'get' in rawBalance) {
+        // Handle the case where an observable is passed
+        try {
+            // @ts-ignore - this is a legend-state observable
+            rawBalance = rawBalance.get();
+        } catch (e) {
+            console.warn('Error accessing observable value:', e);
+            rawBalance = '0';
+        }
+    }
 
-    const wholePart = balance / divisor;
-    const fractionalPart = balance % divisor;
+    // Convert to string first to handle potential null/undefined
+    const balanceStr = String(rawBalance || '0');
 
-    // Format with proper decimal places
-    // Pad the fractional part with leading zeros if needed
-    const fractionalStr = fractionalPart.toString().padStart(LIBRA_DECIMALS, '0');
+    try {
+        const balance = BigInt(balanceStr);
+        const divisor = BigInt(10 ** LIBRA_DECIMALS);
 
-    // Trim trailing zeros but keep at least 2 decimal places
-    const trimmedFractional = fractionalStr.replace(/0+$/, '').padEnd(2, '0');
+        const wholePart = balance / divisor;
+        const fractionalPart = balance % divisor;
 
-    // Format whole part with thousands separators
-    const wholePartFormatted = wholePart.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        // Format with proper decimal places
+        // Pad the fractional part with leading zeros if needed
+        const fractionalStr = fractionalPart.toString().padStart(LIBRA_DECIMALS, '0');
 
-    // Only show decimal part if it's non-zero
-    return trimmedFractional === '00'
-        ? wholePartFormatted
-        : `${wholePartFormatted}.${trimmedFractional}`;
+        // Trim trailing zeros but keep at least 2 decimal places
+        const trimmedFractional = fractionalStr.replace(/0+$/, '').padEnd(2, '0');
+
+        // Format whole part with thousands separators
+        const wholePartFormatted = wholePart.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+        // Only show decimal part if it's non-zero
+        return trimmedFractional === '00'
+            ? wholePartFormatted
+            : `${wholePartFormatted}.${trimmedFractional}`;
+    } catch (e) {
+        console.warn('Error formatting balance:', e);
+        return '0';
+    }
+}
+
+// Only update the current resource type without triggering a full data fetch
+function setCurrentResourceType(address: string, resourceType: string) {
+    console.log(`Setting current resource for ${address} to ${resourceType}`);
+
+    // Only update the current resource type without triggering a fetch
+    store.currentAccount.currentResourceType.set(resourceType);
 }
 
 export default function AccountResourcePage() {
-    // Use useParams hook to get route parameters
     const params = useParams();
-    const address = params.address as string;
-    const resource = params.resource as string;
-
     const router = useRouter();
-    const {
-        accountData,
-        isLoading,
-        error,
-        resourceTypes,
-        getActiveResources,
-    } = useAccountData();
+    const address = params.address as string;
+    const resourceType = decodeURIComponent(params.resource as string);
 
-    // Get the canonical lowercase version of the resource param
-    const normalizedResource = resource.toLowerCase();
+    // Use the account data hook - with our caching improvements, this will only fetch once
+    const { isLoading, error, resourceTypes, currentAccount, accountData } = useAccountData(address);
 
-    // Find matching resource type (case-insensitive)
-    const matchingResourceType = resourceTypes.find(
-        type => type.toLowerCase() === normalizedResource
-    );
-
-    // Get resources for the active tag
-    const activeResources = matchingResourceType
-        ? getActiveResources(matchingResourceType)
-        : [];
-
-    // Redirect if resource doesn't exist or URL case doesn't match
+    // When resource types change or on initial load, find the matching resource type
     useEffect(() => {
-        if (!isLoading && !error && resourceTypes.length > 0) {
-            if (resource !== normalizedResource) {
-                // Fix URL case to be lowercase
-                router.replace(`/account/${address}/${normalizedResource}`);
-            } else if (!matchingResourceType) {
-                // Resource doesn't exist, redirect to first available resource
-                router.replace(`/account/${address}/${resourceTypes[0].toLowerCase()}`);
+        if (!isLoading.get() && !error.get() && resourceTypes.get().length > 0) {
+            // Find the requested resource
+            const foundResourceType = resourceTypes.get().find(
+                rt => rt.type.toLowerCase() === resourceType.toLowerCase()
+            );
+
+            // If resource exists, set it as current without triggering a fetch
+            if (foundResourceType) {
+                setCurrentResourceType(address, foundResourceType.type);
+            } else {
+                // If requested resource doesn't exist, redirect to the first available resource
+                const firstResource = resourceTypes.get()[0].type;
+                router.replace(`/account/${address}/${firstResource.toLowerCase()}`);
             }
         }
-    }, [
-        isLoading,
-        error,
-        resourceTypes,
-        resource,
-        normalizedResource,
-        matchingResourceType,
-        address,
-        router
-    ]);
+    }, [resourceTypes, address, resourceType, isLoading, error, router]);
 
     // Show loading spinner while data is being fetched
-    if (isLoading) {
+    if (isLoading.get()) {
         return (
             <div className="flex justify-center items-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-libra-coral"></div>
@@ -90,10 +97,10 @@ export default function AccountResourcePage() {
     }
 
     // Show error message if there was an error
-    if (error) {
+    if (error.get()) {
         return (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                {error}
+                {error.get()}
             </div>
         );
     }
@@ -138,11 +145,34 @@ export default function AccountResourcePage() {
                     <div className="mb-4">
                         <span className="text-gray-600 dark:text-gray-400 text-sm font-medium">Balance:</span>
                         <p className="mt-1">
-                            <span className="text-2xl font-semibold">{formatBalance(accountData?.balance || 0)}</span>
+                            <span className="text-2xl font-semibold">
+                                {(() => {
+                                    try {
+                                        // Extract balance, handling observables
+                                        const balance = typeof accountData?.balance?.get === 'function'
+                                            ? accountData.balance.get()
+                                            : accountData?.balance || 0;
+                                        return formatBalance(balance);
+                                    } catch (e) {
+                                        console.warn('Error rendering balance:', e);
+                                        return '0';
+                                    }
+                                })()}
+                            </span>
                             <span className="ml-2 text-gray-500 dark:text-gray-400">LIBRA</span>
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
-                            {accountData?.balance || 0} base units
+                            {(() => {
+                                try {
+                                    // Extract raw balance for displaying in base units
+                                    const rawBalance = typeof accountData?.balance?.get === 'function'
+                                        ? accountData.balance.get()
+                                        : accountData?.balance || 0;
+                                    return String(rawBalance);
+                                } catch (e) {
+                                    return '0';
+                                }
+                            })()} base units
                         </p>
                     </div>
                 </div>
@@ -157,20 +187,20 @@ export default function AccountResourcePage() {
                 </div>
 
                 {/* Resource Type Tags Navigation */}
-                {resourceTypes.length > 0 && (
+                {resourceTypes.get().length > 0 && (
                     <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700">
                         <div className="flex flex-wrap gap-2">
-                            {resourceTypes.map((type) => (
+                            {resourceTypes.get().map((type) => (
                                 <Link
-                                    key={type}
-                                    href={`/account/${address}/${type.toLowerCase()}`}
+                                    key={type.type}
+                                    href={`/account/${address}/${encodeURIComponent(type.type.toLowerCase())}`}
                                     className={`px-3 py-1.5 text-sm font-medium rounded-md 
-                                        ${type.toLowerCase() === normalizedResource
+                                        ${type.type.toLowerCase() === resourceType.toLowerCase()
                                             ? 'bg-libra-coral text-white'
                                             : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                                         }`}
                                 >
-                                    {type}
+                                    {type.displayName || type.type.split('::').pop() || 'Resource'}
                                 </Link>
                             ))}
                         </div>
@@ -179,29 +209,59 @@ export default function AccountResourcePage() {
 
                 {/* Resource Content */}
                 <div className="p-6 space-y-6">
-                    {activeResources.length > 0 ? (
-                        activeResources.map((resource: { type?: string, data?: Record<string, unknown> }, index: number) => (
-                            <div key={index} className="bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800">
-                                <div className="px-4 py-3 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                                    <h3 className="font-medium text-libra-coral break-all text-sm">
-                                        {resource.type || 'Resource'}
-                                    </h3>
-                                </div>
-                                <div className="p-4">
-                                    <pre className="overflow-x-auto text-xs whitespace-pre-wrap">
-                                        {JSON.stringify(resource.data || {}, null, 2)}
-                                    </pre>
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="text-center py-6 text-gray-500">
-                            {accountData?.resources?.length
-                                ? 'No resources found for this type'
-                                : 'No resources found for this account'
+                    {(() => {
+                        // Safely extract resources array
+                        let resources = [];
+                        try {
+                            // Get the account data if it exists
+                            const account = accountData || {};
+                            // Extract resources array, handle both observable and regular objects
+                            resources = (typeof account.resources?.get === 'function')
+                                ? account.resources.get()
+                                : Array.isArray(account.resources)
+                                    ? account.resources
+                                    : [];
+                        } catch (e) {
+                            console.error('Error accessing resources:', e);
+                        }
+
+                        // If we have resources, filter and render them
+                        if (resources.length > 0) {
+                            const filteredResources = resources.filter(res => {
+                                try {
+                                    // Normalize both strings for comparison
+                                    const resourceTypeNormalized = (res.type || '').toLowerCase();
+                                    const currentTypeNormalized = resourceType.toLowerCase();
+                                    return resourceTypeNormalized === currentTypeNormalized;
+                                } catch (e) {
+                                    console.error('Error comparing resource types:', e);
+                                    return false;
+                                }
+                            });
+
+                            if (filteredResources.length > 0) {
+                                return filteredResources.map((resource, index) => (
+                                    <div key={index} className="bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800">
+                                        <div className="px-4 py-3 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                                            <h4 className="font-medium text-gray-800 dark:text-gray-200">{resource.type || 'Unknown Resource'}</h4>
+                                        </div>
+                                        <div className="p-4">
+                                            <pre className="text-sm overflow-auto whitespace-pre-wrap break-words">
+                                                {JSON.stringify(resource.data || {}, null, 2)}
+                                            </pre>
+                                        </div>
+                                    </div>
+                                ));
                             }
-                        </div>
-                    )}
+                        }
+
+                        // Fallback for no resources
+                        return (
+                            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                                <p>No resources found for this resource type.</p>
+                            </div>
+                        );
+                    })()}
                 </div>
             </div>
         </>

@@ -1,4 +1,13 @@
 import { observable } from '@legendapp/state';
+import { configureObservablePersistence } from '@legendapp/state/persist';
+
+// Configure Legend State for Next.js
+configureObservablePersistence({
+    // Standard configuration parameters
+    persistLocal: false,
+    throttle: 250,
+    writeDelay: 250
+});
 
 // Define our blockchain explorer types
 export interface Transaction {
@@ -52,6 +61,7 @@ export interface AppState {
         error: string | null;
         resourceTypes: ResourceType[];
         currentResourceType: string | null;
+        lastFetched: number | null;
     };
     ui: {
         darkMode: boolean;
@@ -84,6 +94,7 @@ const initialState: AppState = {
         error: null,
         resourceTypes: [],
         currentResourceType: null,
+        lastFetched: null,
     },
     ui: {
         darkMode: false,

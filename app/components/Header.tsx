@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { observable } from '@legendapp/state';
+import { observable, useObservable } from '@legendapp/state/react';
 import { fetchAccountData } from '../store/actions';
 import { getTransactionByHash } from '../services/transactionService';
 import { toggleDarkMode } from '../store/actions';
@@ -15,10 +15,13 @@ interface HeaderProps {
 export default function Header({ showSearch = true }: HeaderProps) {
     const router = useRouter();
     const [searchInput, setSearchInput] = useState<string>('');
-    const searchState = observable({
+
+    // Use useObservable hook to create component state that will trigger re-renders
+    const searchState = useObservable({
         isSearching: false,
         error: null as string | null
     });
+
     const { isDarkMode } = useUIPreferences();
 
     const handleSearch = async (e: React.FormEvent) => {

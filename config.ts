@@ -5,6 +5,19 @@
 // RPC endpoint for Open Libra blockchain
 export const RPC_URL = 'https://rpc.openlibra.space:8080/v1';
 
+// Fallback RPC endpoints in case the primary one is slow or down
+export const FALLBACK_RPC_URLS = [
+    'https://rpc-fallback.openlibra.space:8080/v1',  // Example - replace with actual fallbacks
+];
+
+// Timeout settings (in milliseconds)
+export const TIMEOUTS = {
+    TRANSACTION: 20000,    // 20 seconds for transaction fetches
+    ACCOUNT: 20000,        // 20 seconds for account data 
+    BLOCKCHAIN: 30000,     // 30 seconds for blockchain stats
+    RETRY: 15000,          // 15 seconds for retry attempts
+};
+
 // Client-side mode configuration
 // When true, API calls will be made directly from the browser
 // When false, API calls will be made server-side using server actions
@@ -27,7 +40,10 @@ export const DEFAULT_NETWORK = NETWORK.MAINNET;
 export const DEFAULT_TX_LIMIT = 20;
 
 // Auto-refresh interval in milliseconds
-export const AUTO_REFRESH_INTERVAL = 10000; // 10 seconds
+export const AUTO_REFRESH_INTERVAL = 15000; // 15 seconds
+
+// Maximum number of retry attempts for API calls
+export const MAX_RETRY_ATTEMPTS = 1;
 
 // Debug mode - enables console logging
 export const DEBUG_MODE = true; 
