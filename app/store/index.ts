@@ -1,10 +1,4 @@
 import { observable } from '@legendapp/state';
-import { enableReactTracking } from '@legendapp/state/config/enableReactTracking';
-
-// Enable React Tracking for automatic component updates
-enableReactTracking({
-    auto: true,
-});
 
 // Define our blockchain explorer types
 export interface Transaction {
@@ -119,4 +113,4 @@ export const selectTransactionsList = () => store.transactions.list.get();
 export const selectCurrentTransaction = () => store.currentTransaction.get();
 export const selectAccount = (address: string) => store.accounts[address].get();
 export const selectCurrentAccount = () => store.currentAccount.get();
-export const selectIsDarkMode = () => store.ui.darkMode.get(); 
+export const selectIsDarkMode = () => store.ui.darkMode.get();

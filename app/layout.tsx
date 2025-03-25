@@ -2,8 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 
-// Initialize Legend State
-import '@legendapp/state/config';
+// Initialize Legend State correctly - no need for special import here
 import ThemeProvider from './components/ThemeProvider';
 
 const inter = Inter({ subsets: ['latin'] });

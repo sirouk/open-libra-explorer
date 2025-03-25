@@ -8,6 +8,12 @@ import {
 import { getTransactionByHash } from '../services/transactionService';
 import { DEFAULT_TX_LIMIT, AUTO_REFRESH_INTERVAL } from '../../config';
 
+// Define interface for resources
+interface Resource {
+    type: string;
+    data: any;
+}
+
 // Action to fetch blockchain data (block height, epoch, and transactions)
 export async function fetchBlockchainData() {
     try {
@@ -75,7 +81,7 @@ export async function fetchTransactionByHash(hash: string) {
         }
 
         store.currentTransaction.data.set(txData);
-    } catch (err) {
+    } catch (err: any) {
         console.error(`Error fetching transaction ${hash}:`, err);
         store.currentTransaction.error.set(`Failed to fetch transaction: ${err.message || 'Unknown error'}`);
     } finally {
@@ -99,7 +105,7 @@ export async function fetchAccountData(address: string) {
         }
 
         // Extract resource types
-        const resourceTypes = accountData.resources.map(resource => {
+        const resourceTypes = accountData.resources.map((resource: Resource) => {
             const typeParts = resource.type.split('::');
             const displayName = typeParts.length > 2 ? `${typeParts[1]}::${typeParts[2]}` : resource.type;
 
@@ -123,7 +129,7 @@ export async function fetchAccountData(address: string) {
         if (resourceTypes.length > 0) {
             store.currentAccount.currentResourceType.set(resourceTypes[0].type);
         }
-    } catch (err) {
+    } catch (err: any) {
         console.error(`Error fetching account data for ${address}:`, err);
         store.currentAccount.error.set(`Failed to fetch account data: ${err.message || 'Unknown error'}`);
     } finally {
@@ -151,4 +157,4 @@ export function startBlockchainDataRefresh() {
 // Toggle dark mode
 export function toggleDarkMode() {
     store.ui.darkMode.set(!store.ui.darkMode.get());
-} 
+}
