@@ -60,7 +60,9 @@ export function useTransactionDetails(hash: string) {
 export function useAccountData(address?: string) {
     useEffect(() => {
         if (address) {
-            // Only fetch if we don't have recent data (fetchAccountData handles the caching logic)
+            // Always trigger a fetch when the hook is mounted with an address
+            // This ensures data is available even with direct URL access
+            console.log(`useAccountData hook triggered for address: ${address}`);
             fetchAccountData(address).catch(error => {
                 // Error is already handled in the action
                 console.log('Account data fetch failed, but error is handled:', error.message);

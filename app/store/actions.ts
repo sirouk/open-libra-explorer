@@ -293,24 +293,82 @@ export async function fetchTransactionByHash(hash: string) {
 
 // Action to fetch account data
 export async function fetchAccountData(address: string) {
+    // Add a debug log
+    console.log(`fetchAccountData called for ${address}`);
+
     // If already loading, don't trigger another fetch
     if (store.currentAccount.isLoading.get()) {
+        console.log(`Account data already loading for ${address}, skipping`);
         return;
     }
 
     // Check if we already have recent data (within 30 seconds)
     const accountInStore = store.accounts[address].get();
-    const lastFetched = store.currentAccount.lastFetched.get();
+    const lastFetched = accountInStore?.lastFetched || store.currentAccount.lastFetched.get();
     const now = Date.now();
 
     // If we have data and it was fetched less than 30 seconds ago, use it
     if (accountInStore &&
+        accountInStore.resources &&
+        Array.isArray(accountInStore.resources) &&
+        accountInStore.resources.length > 0 &&
         lastFetched &&
-        now - lastFetched < 30000 &&
-        store.currentAccount.address.get() === address) {
+        now - lastFetched < 30000) {
         // We already have fresh data, just set current address and return
         console.log(`Using cached account data for ${address} (fetched ${(now - lastFetched) / 1000}s ago)`);
-        return;
+
+        // Even with cached data, ensure we update the current account state
+        store.currentAccount.address.set(address);
+
+        // Extract resource types for navigation from the cached data
+        const resourceTypes = accountInStore.resources
+            .map((resource: any) => {
+                const type = resource.type;
+                // Get the last part after ::
+                const parts = type.split('::');
+                let displayName = parts[parts.length - 1] || 'Resource';
+
+                // Handle special cases for CoinStore resources
+                if (displayName.includes('<') && displayName.startsWith('CoinStore<')) {
+                    // Extract the coin type from the generic parameter
+                    const match = displayName.match(/CoinStore<.*::(.+?)(?:>|$)/);
+                    if (match && match[1]) {
+                        // If we found a coin type, append it to CoinStore
+                        const coinType = match[1].split('::').pop() || '';
+                        return {
+                            type,
+                            displayName: `CoinStore (${coinType})`
+                        };
+                    }
+                }
+
+                // For generic types, remove the generic parameters for display
+                if (displayName.includes('<')) {
+                    displayName = displayName.split('<')[0];
+                }
+
+                // Format the display name with proper spacing
+                displayName = displayName.replace(/_/g, ' ')
+                    .replace(/([A-Z])/g, ' $1').trim()  // Add space before capital letters
+                    .replace(/\s+/g, ' ');              // Replace multiple spaces with one
+
+                // Capitalize first letter
+                displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+
+                return { type, displayName };
+            })
+            .filter((rt: any, index: number, self: any[]) =>
+                // Filter out duplicates
+                index === self.findIndex((t) => t.type === rt.type)
+            )
+            .sort((a: any, b: any) => a.type.localeCompare(b.type));
+
+        store.currentAccount.resourceTypes.set(resourceTypes);
+        store.currentAccount.lastFetched.set(lastFetched);
+        store.currentAccount.error.set(null);
+        store.currentAccount.isLoading.set(false);
+
+        return accountInStore;
     }
 
     try {

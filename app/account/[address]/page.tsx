@@ -1,14 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useState, useMemo } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { useAccountData } from '../../store/hooks';
 import { fetchAccountData } from '../../store/actions';
 import { store } from '../../store';
 import Link from 'next/link';
 import { LIBRA_DECIMALS } from '../../../config';
 
-// Helper to get a clean display name from a resource type
+// Helper to get a clean slug from a resource type
+function getSlugFromResourceType(resourceType: string): string {
+    // Extract base type for slugs (e.g. "coinstore" from "0x1::coin::CoinStore<0x1::libra_coin::LibraCoin>")
+    const basePattern = /::([^:<]+)(?:<|$)/;
+    const baseMatch = resourceType.match(basePattern);
+    const baseType = baseMatch ? baseMatch[1].toLowerCase() : '';
+
+    // Replace underscores with hyphens
+    return baseType.replace(/_/g, '-');
+}
+
+// Helper to get the display name from a resource type
 function getDisplayNameFromResourceType(resourceType: string): string {
     // Extract the base name using regex pattern
     const basePattern = /::([^:<]+)(?:<|$)/;
@@ -35,6 +46,53 @@ function getDisplayNameFromResourceType(resourceType: string): string {
     return displayName.replace(/(_|^)[a-z]/g, match =>
         match.replace('_', ' ').toUpperCase()
     );
+}
+
+// Find resource type from slug
+function findResourceTypeFromSlug(slug: string, availableTypes: ResourceType[]): string | null {
+    if (!slug) return null;
+
+    // Normalize the slug
+    const normalizedSlug = slug.replace(/-/g, '_').toLowerCase();
+    console.log(`Finding resource for slug: ${slug} (normalized: ${normalizedSlug})`);
+
+    // Debug all available types and their extracted base types
+    availableTypes.forEach(rt => {
+        const basePattern = /::([^:<]+)(?:<|$)/;
+        const baseMatch = rt.type.match(basePattern);
+        const baseType = baseMatch ? baseMatch[1].toLowerCase() : '';
+        console.log(`Available type: ${rt.type} -> base: ${baseType}`);
+    });
+
+    // Try a more direct approach first - check for type ending with the slug
+    const exactMatch = availableTypes.find(rt => {
+        // For example, if slug is "jail", look for type ending with "::Jail" or "::jail"
+        return rt.type.toLowerCase().endsWith(`:${normalizedSlug}`) ||
+            rt.type.toLowerCase().endsWith(`::${normalizedSlug}`);
+    });
+
+    if (exactMatch) {
+        console.log(`Found exact match for slug '${slug}':`, exactMatch.type);
+        return exactMatch.type;
+    }
+
+    // Find the matching resource type by base name
+    const matchingResource = availableTypes.find(rt => {
+        // Extract base type for matching
+        const basePattern = /::([^:<]+)(?:<|$)/;
+        const baseMatch = rt.type.match(basePattern);
+        const baseType = baseMatch ? baseMatch[1].toLowerCase() : '';
+
+        return baseType === normalizedSlug;
+    });
+
+    if (matchingResource) {
+        console.log(`Found base type match for slug '${slug}':`, matchingResource.type);
+    } else {
+        console.log(`No match found for slug '${slug}'`);
+    }
+
+    return matchingResource ? matchingResource.type : null;
 }
 
 // Format raw balance to LIBRA display format
@@ -87,17 +145,48 @@ interface Resource {
     data: any;
 }
 
+interface ResourceType {
+    type: string;
+    displayName: string;
+}
+
 interface Account {
     address?: string;
     balance?: string | number;
-    resources?: Resource[];
+    resources?: any; // Can be an observable or regular array
     lastFetched?: number;
     [key: string]: any; // Allow additional properties
 }
 
+// Next.js dynamic segment for optional resource parameter
+interface AccountPageParams {
+    address: string;
+    resource?: string;
+    [key: string]: string | string[] | undefined;
+}
+
+// Function to safely filter resources based on current resource type
+function filterResourcesByType(resources: Resource[], resourceType: string | null): Resource[] {
+    if (!resourceType) return [];
+
+    console.log(`Filtering resources for type: ${resourceType}`);
+
+    return resources.filter(res => {
+        try {
+            // Simple case-insensitive string comparison
+            return res.type.toLowerCase() === resourceType.toLowerCase();
+        } catch (e) {
+            console.error('Error comparing resource types:', e);
+            return false;
+        }
+    });
+}
+
 export default function AccountPage() {
-    const params = useParams();
+    const params = useParams<AccountPageParams>();
+    const router = useRouter();
     const address = params.address as string;
+    const resourceSlug = params.resource as string | undefined;
 
     // Local state for current resource type
     const [currentResourceType, setCurrentResourceType] = useState<string | null>(null);
@@ -105,12 +194,50 @@ export default function AccountPage() {
     // Use the account data hook 
     const { isLoading, error, resourceTypes, accountData } = useAccountData(address);
 
-    // Set initial resource type when data loads
+    // Function to change the selected resource type
+    const selectResourceType = (type: string) => {
+        console.log(`Selecting resource type: ${type}`);
+        setCurrentResourceType(type);
+
+        // Update URL to reflect the selected resource without reloading the page
+        const slug = getSlugFromResourceType(type);
+        // Use history.pushState to update URL without navigation
+        window.history.pushState({}, '', `/account/${address}/${slug}`);
+    };
+
+    // This effect runs when the component mounts to set the initial resource type
     useEffect(() => {
-        if (!isLoading.get() && !error.get() && resourceTypes.get().length > 0 && !currentResourceType) {
-            setCurrentResourceType(resourceTypes.get()[0].type);
+        // Log current state for debugging
+        console.log(`Initial resource effect: loading=${isLoading.get()}, error=${error.get()}, resourceTypes=${resourceTypes.get().length}, slug=${resourceSlug}, currentType=${currentResourceType}`);
+
+        if (!isLoading.get() && resourceTypes.get().length > 0) {
+            if (resourceSlug) {
+                // Try to find the resource type matching the slug
+                const fullResourceType = findResourceTypeFromSlug(resourceSlug, resourceTypes.get());
+                console.log(`Matching resource type for slug '${resourceSlug}':`, fullResourceType);
+
+                if (fullResourceType) {
+                    setCurrentResourceType(fullResourceType);
+                } else {
+                    // If slug doesn't match, use first resource and update URL
+                    const firstType = resourceTypes.get()[0].type;
+                    const slug = getSlugFromResourceType(firstType);
+                    console.log(`Resource slug not found, using first type: ${firstType} (slug: ${slug})`);
+                    setCurrentResourceType(firstType);
+                    window.history.replaceState({}, '', `/account/${address}/${slug}`);
+                }
+            } else if (!currentResourceType) {
+                // No slug in URL, set first resource and update URL
+                const firstType = resourceTypes.get()[0].type;
+                const slug = getSlugFromResourceType(firstType);
+                console.log(`No resource slug, using first type: ${firstType} (slug: ${slug})`);
+                setCurrentResourceType(firstType);
+                window.history.replaceState({}, '', `/account/${address}/${slug}`);
+            }
         }
-    }, [isLoading, error, resourceTypes, currentResourceType]);
+        // We only want this effect to run on mount and when the resourceTypes change
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isLoading, resourceTypes, resourceSlug, address]);
 
     // Function to render loading state
     const renderLoading = () => (
@@ -155,13 +282,22 @@ export default function AccountPage() {
         try {
             // Get the account data if it exists
             const account = accountData || {} as Account;
-            // Extract resources array, handle both observable and regular objects
-            if (account) {
-                const resourcesValue = typeof account.resources?.get === 'function'
-                    ? account.resources.get()
-                    : account.resources;
 
-                resources = Array.isArray(resourcesValue) ? resourcesValue : [];
+            // Safe access to resources (check if it's an observable or plain array)
+            if (account && account.resources) {
+                // Check if it's an observable with get method
+                if (typeof (account.resources as any).get === 'function') {
+                    try {
+                        const resourcesData = (account.resources as any).get();
+                        resources = Array.isArray(resourcesData) ? resourcesData : [];
+                    } catch (e) {
+                        console.error('Error getting observable resources:', e);
+                        resources = [];
+                    }
+                } else {
+                    // It's a plain array
+                    resources = Array.isArray(account.resources) ? account.resources : [];
+                }
             }
         } catch (e) {
             console.error('Error accessing resources:', e);
@@ -182,10 +318,24 @@ export default function AccountPage() {
             );
         }
 
-        // Filter resources by current type
-        const filteredResources = resources.filter(res =>
-            res.type.toLowerCase() === (currentResourceType || '').toLowerCase()
-        );
+        // Use useMemo to cache filtered resources and avoid re-filtering on every render
+        const filteredResources = useMemo(() => {
+            if (!currentResourceType) return [];
+
+            console.log(`Filtering resources for type: ${currentResourceType}`);
+
+            return resources.filter(res => {
+                try {
+                    // Simple case-insensitive string comparison
+                    return res.type.toLowerCase() === currentResourceType.toLowerCase();
+                } catch (e) {
+                    console.error('Error comparing resource types:', e);
+                    return false;
+                }
+            });
+        }, [resources, currentResourceType]);
+
+        console.log(`Found ${filteredResources.length} resources matching type ${currentResourceType}`);
 
         return (
             <>
@@ -278,7 +428,10 @@ export default function AccountPage() {
                                     return (
                                         <button
                                             key={type.type}
-                                            onClick={() => setCurrentResourceType(type.type)}
+                                            onClick={() => {
+                                                console.log(`Clicked resource button: ${type.type}`);
+                                                selectResourceType(type.type);
+                                            }}
                                             className={`px-3 py-1.5 text-sm font-medium rounded-md 
                                                 ${type.type === currentResourceType
                                                     ? 'bg-libra-coral text-white'
@@ -360,11 +513,20 @@ export default function AccountPage() {
 
     // Main render based on loading/error state
     if (isLoading.get()) {
+        console.log('Rendering loading state');
         return renderLoading();
     }
 
     if (error.get()) {
+        console.log('Rendering error state:', error.get());
         return renderError();
+    }
+
+    // Check if we have account data (safer check)
+    const hasAccountData = !!accountData;
+
+    if (!hasAccountData) {
+        console.log('No account data found for address:', address);
     }
 
     return (
