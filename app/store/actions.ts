@@ -1,4 +1,4 @@
-import { store, formatTransactionDate, Transaction } from './index';
+import { store, formatTransactionDate, Transaction, pruneTransactionCache } from './index';
 import {
     getBlockHeight,
     getEpoch,
@@ -125,8 +125,17 @@ export async function fetchBlockchainData() {
                 return b.timestamp - a.timestamp;
             });
 
+            // Cache each transaction in the list
+            enhancedTransactions.forEach((tx: any) => {
+                store.transactions.cache[tx.id].set(tx);
+            });
+
+            // Update the transactions list
             store.transactions.list.set(enhancedTransactions);
             store.transactions.error.set(null);
+
+            // Prune transaction cache for items no longer in list
+            pruneTransactionCache();
         } else if (transactionsFailed) {
             store.transactions.error.set('Unable to fetch recent transactions. Please try again later.');
         }
@@ -163,33 +172,49 @@ export async function fetchTransactionByHash(hash: string) {
         const normalizedHash = hash.startsWith('0x') ? hash : `0x${hash}`;
         console.log(`Fetching transaction details for: ${normalizedHash}`);
 
-        // Check if we have this transaction in our already fetched transactions list
-        const cachedTransaction = store.transactions.list.get().find(tx =>
+        // Check if we have this transaction in our cache
+        const cachedTx = store.transactions.cache[normalizedHash].get();
+        if (cachedTx) {
+            console.log(`Found transaction in cache: ${normalizedHash}`);
+            store.currentTransaction.data.set(cachedTx);
+            store.currentTransaction.isLoading.set(false);
+            return;
+        }
+
+        // If not in cache, check if we have this transaction in our transactions list
+        const txInList = store.transactions.list.get().find(tx =>
             tx.id === normalizedHash || tx.id === hash);
 
-        if (cachedTransaction) {
-            console.log(`Found transaction in cache: ${normalizedHash}`);
-            // Use cached data but still fetch full details in the background
+        if (txInList) {
+            console.log(`Found transaction in list: ${normalizedHash}`);
+            // Use data from list but still fetch full details in the background
+            store.currentTransaction.data.set({
+                ...txInList,
+                hash: normalizedHash,
+                success: true,
+                displayType: txInList.type
+            });
+            store.currentTransaction.isLoading.set(false);
+
+            // Background fetch for complete details
             setTimeout(() => {
                 getTransactionByHash(normalizedHash).then(freshData => {
                     if (freshData) {
+                        // Update current transaction
                         store.currentTransaction.data.set(freshData);
+                        // Also cache the complete data
+                        store.transactions.cache[normalizedHash].set(freshData);
                     }
                 }).catch(err => {
                     console.warn(`Background refresh of transaction ${normalizedHash} failed:`, err);
                 });
             }, 100);
 
-            // Return cached data immediately
-            store.currentTransaction.data.set({
-                ...cachedTransaction,
-                // Set minimum fields needed for display
-                hash: normalizedHash,
-                success: true,
-                displayType: cachedTransaction.type
-            });
             return;
         }
+
+        // If not found in cache or list, fetch from API
+        console.log(`Transaction ${normalizedHash} not in cache or list, fetching from API`);
 
         // Add timeout to prevent hanging requests - 20 seconds for transaction details
         const fetchWithTimeout = async () => {
@@ -240,6 +265,7 @@ export async function fetchTransactionByHash(hash: string) {
         const processedTxData = {
             ...txData,
             hash: normalizedHash,
+            id: normalizedHash,
             // Ensure these fields are set to avoid UI errors
             success: txData.success === undefined ? true : txData.success,
             displayType: txData.displayType || txData.type || 'Unknown',
@@ -247,16 +273,19 @@ export async function fetchTransactionByHash(hash: string) {
             timestamp: txData.timestamp || Math.floor(Date.now() / 1000)
         };
 
+        // Update current transaction
         store.currentTransaction.data.set(processedTxData);
+
+        // Also cache this transaction for future use
+        store.transactions.cache[normalizedHash].set(processedTxData);
+
     } catch (err: any) {
         console.error(`Error fetching transaction ${hash}:`, err);
-
-        // Set a user-friendly error message
-        const errorMessage = err.message?.includes('timed out')
-            ? 'The transaction request timed out. The network may be congested, or this transaction may not exist.'
-            : `Failed to fetch transaction: ${err.message || 'Unknown error'}`;
-
-        store.currentTransaction.error.set(errorMessage);
+        store.currentTransaction.error.set(
+            err.message?.includes('timed out')
+                ? 'Request timed out. The blockchain node may be experiencing high load.'
+                : err.message || 'Failed to fetch transaction details'
+        );
     } finally {
         store.currentTransaction.isLoading.set(false);
     }
@@ -264,121 +293,173 @@ export async function fetchTransactionByHash(hash: string) {
 
 // Action to fetch account data
 export async function fetchAccountData(address: string) {
+    // If already loading, don't trigger another fetch
+    if (store.currentAccount.isLoading.get()) {
+        return;
+    }
+
+    // Check if we already have recent data (within 30 seconds)
+    const accountInStore = store.accounts[address].get();
+    const lastFetched = store.currentAccount.lastFetched.get();
+    const now = Date.now();
+
+    // If we have data and it was fetched less than 30 seconds ago, use it
+    if (accountInStore &&
+        lastFetched &&
+        now - lastFetched < 30000 &&
+        store.currentAccount.address.get() === address) {
+        // We already have fresh data, just set current address and return
+        console.log(`Using cached account data for ${address} (fetched ${(now - lastFetched) / 1000}s ago)`);
+        return;
+    }
+
     try {
-        // Check cache for the address
-        const existingAccount = store.accounts[address]?.get();
-        const now = Date.now();
-        const lastFetched = store.currentAccount.lastFetched.get();
-        const isCacheValid = existingAccount &&
-            lastFetched &&
-            (now - lastFetched < 30000) && // Cache for 30 seconds
-            store.currentAccount.address.get() === address;
-
-        // Use cache if valid
-        if (isCacheValid) {
-            console.log(`Using cached account data for ${address}`);
-            return;
-        }
-
         // Set loading state
         store.currentAccount.isLoading.set(true);
         store.currentAccount.error.set(null);
         store.currentAccount.address.set(address);
 
-        // Simple timeout Promise for the fetch
-        const fetchWithTimeout = async () => {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), TIMEOUTS.ACCOUNT);
+        console.log(`Fetching account data for ${address}`);
 
-            try {
-                const result = await getAccountResources(address);
-                clearTimeout(timeoutId);
-                return result;
-            } catch (error) {
-                if (error.name === 'AbortError') {
-                    throw new Error(`Account data request timed out after ${TIMEOUTS.ACCOUNT / 1000} seconds`);
-                }
-                throw error;
-            }
-        };
-
-        // Fetch account data
-        const accountData = await fetchWithTimeout();
-
-        if (!accountData) {
-            throw new Error('No account data found');
-        }
-
-        // Ensure resources is an array
-        const resources = Array.isArray(accountData.resources) ? accountData.resources : [];
-
-        // Extract resource types for navigation
-        const resourceTypes = resources.map(resource => {
-            const type = resource.type || '';
-            const parts = type.split('::');
-            let displayName = type;
-
-            // Create a shorter display name
-            if (parts.length >= 3) {
-                displayName = `${parts[1]}::${parts[2]}`;
-            }
-
-            return {
-                type,
-                displayName
-            };
+        // Fetch account data with timeout for the main operation - 20 seconds
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(
+                () => reject(new Error(`Account fetch timed out after ${TIMEOUTS.ACCOUNT / 1000} seconds`)),
+                TIMEOUTS.ACCOUNT
+            );
         });
 
-        // Store the data in global state
+        // Race between the actual fetch and the timeout
+        const accountData = await Promise.race([
+            getAccountResources(address),
+            timeoutPromise
+        ]) as any;
+
+        if (!accountData || !accountData.resources) {
+            throw new Error('Failed to fetch account data: Empty response');
+        }
+
+        // DETAILED LOGGING - Log the full account data structure
+        console.log(`=============== RAW ACCOUNT DATA FOR ${address} ===============`);
+        console.log(JSON.stringify(accountData, null, 2));
+        console.log(`=============== END RAW ACCOUNT DATA ===============`);
+
+        // DETAILED LOGGING - Look specifically for CoinStore resources
+        const coinStoreResources = accountData.resources.filter((resource: any) =>
+            resource.type && resource.type.includes('CoinStore')
+        );
+
+        if (coinStoreResources.length > 0) {
+            console.log(`=============== FOUND ${coinStoreResources.length} COINSTORE RESOURCES ===============`);
+            coinStoreResources.forEach((resource: any, index: number) => {
+                console.log(`CoinStore #${index + 1}: ${resource.type}`);
+                console.log(JSON.stringify(resource.data, null, 2));
+            });
+            console.log(`=============== END COINSTORE RESOURCES ===============`);
+        } else {
+            console.log('No CoinStore resources found in account data');
+        }
+
+        console.log(`Successfully fetched account data for ${address} with ${accountData.resources.length} resources`);
+
+        // Extract resource types
+        const resourceTypes = accountData.resources
+            .map((resource: any) => {
+                const type = resource.type;
+                // Extract the base name using regex pattern
+                const basePattern = /::([^:<]+)(?:<|$)/;
+                const baseMatch = type.match(basePattern);
+                const baseName = baseMatch ? baseMatch[1] : type.split('::').pop() || 'Resource';
+
+                // Special handling for CoinStore resources
+                if (type.includes('::coin::CoinStore<')) {
+                    // Extract coin type from the format: 0x1::coin::CoinStore<0x1::libra_coin::LibraCoin>
+                    const coinTypeMatch = type.match(/CoinStore<(.+?)::([^:>]+?)(?:>|$)/);
+                    if (coinTypeMatch && coinTypeMatch[2]) {
+                        const coinType = coinTypeMatch[2];
+                        console.log(`CoinStore resource found: ${type} -> CoinStore (${coinType})`);
+                        return {
+                            type,
+                            displayName: `CoinStore (${coinType})`
+                        };
+                    }
+                }
+
+                // For other generic types, remove the generic parameters
+                let displayName = baseName;
+                if (displayName.includes('<')) {
+                    displayName = displayName.split('<')[0];
+                }
+
+                // Format the display name with proper spacing
+                displayName = displayName.replace(/_/g, ' ')
+                    .replace(/([A-Z])/g, ' $1').trim()  // Add space before capital letters
+                    .replace(/\s+/g, ' ');              // Replace multiple spaces with one
+
+                // Capitalize first letter
+                displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+
+                // DETAILED LOGGING - Print processing of each resource type
+                console.log(`Resource type: ${type} -> Display name: ${displayName}`);
+
+                return { type, displayName };
+            })
+            .filter((rt: any, index: number, self: any[]) =>
+                // Filter out duplicates
+                index === self.findIndex((t) => t.type === rt.type)
+            )
+            .sort((a: any, b: any) => a.type.localeCompare(b.type));
+
+        // Update store with the fetched data
         store.accounts[address].set({
-            address: accountData.address || address,
-            balance: accountData.balance || '0',
-            resources: resources
+            address: accountData.address,
+            balance: accountData.balance,
+            resources: accountData.resources,
+            lastFetched: now
         });
 
         // Update current account state
         store.currentAccount.resourceTypes.set(resourceTypes);
-        store.currentAccount.lastFetched.set(Date.now());
+        store.currentAccount.lastFetched.set(now);
+        store.currentAccount.error.set(null);
 
-        // Set current resource type if we have resources
-        if (resourceTypes.length > 0) {
-            store.currentAccount.currentResourceType.set(resourceTypes[0].type);
+        // If no resource types, set an error
+        if (resourceTypes.length === 0) {
+            store.currentAccount.error.set('No resources found for this account');
         }
-    } catch (error) {
-        console.error(`Error fetching account data for ${address}:`, error);
 
-        // Clear resources to show empty state
-        store.currentAccount.resourceTypes.set([]);
+        return accountData;
+    } catch (err: any) {
+        console.error(`Error fetching account ${address}:`, err);
 
-        // Set error message
-        const errorMessage = error.message?.includes('timed out')
-            ? 'Request timed out. The network may be slow or this account may not exist.'
-            : `Failed to fetch account data: ${error.message || 'Unknown error'}`;
+        // Set error in the store
+        store.currentAccount.error.set(
+            err.message?.includes('timed out')
+                ? 'Request timed out. The blockchain node may be experiencing high load.'
+                : err.message || 'Failed to fetch account data'
+        );
 
-        store.currentAccount.error.set(errorMessage);
+        throw err; // Re-throw to allow catch in UI components
     } finally {
+        // Set loading state to false
         store.currentAccount.isLoading.set(false);
     }
 }
 
-// Setup auto-refresh for blockchain data
-let refreshInterval: NodeJS.Timeout | null = null;
-
+// Start blockchain auto-refresh timer
 export function startBlockchainDataRefresh() {
-    if (refreshInterval) {
-        clearInterval(refreshInterval);
-    }
-
-    refreshInterval = setInterval(fetchBlockchainData, AUTO_REFRESH_INTERVAL);
-    return () => {
-        if (refreshInterval) {
-            clearInterval(refreshInterval);
-            refreshInterval = null;
+    const interval = setInterval(() => {
+        // Only refresh if not currently refreshing
+        if (!store.transactions.isRefreshing.get()) {
+            fetchBlockchainData();
         }
-    };
+    }, AUTO_REFRESH_INTERVAL);
+
+    // Return cleanup function
+    return () => clearInterval(interval);
 }
 
 // Toggle dark mode
 export function toggleDarkMode() {
-    store.ui.darkMode.set(!store.ui.darkMode.get());
+    store.ui.darkMode.set(current => !current);
 }

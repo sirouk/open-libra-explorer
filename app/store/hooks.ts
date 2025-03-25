@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { store } from './index';
+import { store, selectTransactionCache } from './index';
 import {
     fetchBlockchainData,
     fetchTransactionByHash,
@@ -10,8 +10,10 @@ import {
 // Hook for blockchain data (block height, epoch, transactions)
 export function useBlockchainData() {
     useEffect(() => {
-        // Initial fetch
-        fetchBlockchainData();
+        // Initial fetch only if we don't have data already
+        if (store.transactions.list.get().length === 0) {
+            fetchBlockchainData();
+        }
 
         // Setup auto-refresh
         const cleanup = startBlockchainDataRefresh();
@@ -37,7 +39,13 @@ export function useBlockchainData() {
 export function useTransactionDetails(hash: string) {
     useEffect(() => {
         if (hash) {
-            fetchTransactionByHash(hash);
+            // Check if data already in the cache before fetching
+            const normalizedHash = hash.startsWith('0x') ? hash : `0x${hash}`;
+            const txCache = selectTransactionCache();
+
+            if (!txCache[normalizedHash] && !store.currentTransaction.isLoading.get()) {
+                fetchTransactionByHash(hash);
+            }
         }
     }, [hash]);
 
@@ -52,7 +60,11 @@ export function useTransactionDetails(hash: string) {
 export function useAccountData(address?: string) {
     useEffect(() => {
         if (address) {
-            fetchAccountData(address);
+            // Only fetch if we don't have recent data (fetchAccountData handles the caching logic)
+            fetchAccountData(address).catch(error => {
+                // Error is already handled in the action
+                console.log('Account data fetch failed, but error is handled:', error.message);
+            });
         }
     }, [address]);
 

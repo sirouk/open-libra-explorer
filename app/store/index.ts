@@ -1,10 +1,10 @@
 import { observable } from '@legendapp/state';
 import { configureObservablePersistence } from '@legendapp/state/persist';
 
-// Configure Legend State for Next.js
+// Configure Legend State for Next.js with persistence
 configureObservablePersistence({
-    // Standard configuration parameters
-    persistLocal: false,
+    // Enable local persistence
+    persistLocal: true,
     throttle: 250,
     writeDelay: 250
 });
@@ -26,6 +26,7 @@ export interface Account {
     address: string;
     balance: string;
     resources: any[];
+    lastFetched?: number;
 }
 
 export interface ResourceType {
@@ -46,6 +47,8 @@ export interface AppState {
         isLoading: boolean;
         isRefreshing: boolean;
         error: string | null;
+        // Cache of transaction details (by id)
+        cache: { [id: string]: any };
     };
     currentTransaction: {
         data: any | null;
@@ -81,6 +84,7 @@ const initialState: AppState = {
         isLoading: false,
         isRefreshing: false,
         error: null,
+        cache: {},
     },
     currentTransaction: {
         data: null,
@@ -118,9 +122,24 @@ export const formatTransactionDate = (timestamp: number): string => {
     });
 };
 
+// Helper to prune transaction cache for items not in the current list
+export const pruneTransactionCache = () => {
+    const currentList = store.transactions.list.get();
+    const currentIds = new Set(currentList.map(tx => tx.id));
+    const cachedIds = Object.keys(store.transactions.cache.get());
+
+    // Remove cached transactions that are no longer in the list
+    for (const id of cachedIds) {
+        if (!currentIds.has(id)) {
+            store.transactions.cache[id].set(undefined);
+        }
+    }
+};
+
 // Some helper selectors
 export const selectBlockchainState = () => store.blockchain.get();
 export const selectTransactionsList = () => store.transactions.list.get();
+export const selectTransactionCache = () => store.transactions.cache.get();
 export const selectCurrentTransaction = () => store.currentTransaction.get();
 export const selectAccount = (address: string) => store.accounts[address].get();
 export const selectCurrentAccount = () => store.currentAccount.get();
